@@ -50,41 +50,10 @@ def save_params(  # global parameters
     #
     # for key       in params_dict.keys():
     # for key_value in params_dict.values():
-    for key, key_value in params_dict.items():
+    for key, key_value in step2_params.items():
         tmp = []
         tmp.append(key_value)
         numpy.save(path + '_hist_' + key + '.npy',  tmp)
-
-
-
-import csv
-
-dict = {'Python' : '.py', 'C++' : '.cpp', 'Java' : '.java'}
-w = csv.writer(open("output.csv", "w"))
-for key, val in dict.items():
-    w.writerow([key, val])
-
-
-Comment créer une copie indépendante d'un dictionnaire python?
-Comme pour toute variable, vous ne pouvez pas copier un dictionnaire en faisant dic1 = dic2 :
-
-
->>> a = {}
->>> a["nom"] = "Wayne"
->>> a["prenom"] = "Bruce"
-
->>> d = {"k1":"Bruce", "k2":"Wayne"}
->>> e = d
->>> d["k1"] = "XXX"
->>> e
-{'k2': 'Wayne', 'k1': 'XXX'}
-Pour créer une copie indépendante vous pouvez utiliser la méthode copy :
-
->>> d = {"k1":"Bruce", "k2":"Wayne"}
->>> e = d.copy()
->>> d["k1"] = "XXX"
->>> e
-{'k2': 'Wayne', 'k1': 'Bruce'}
 
 
 def step2_save(  # global parameters

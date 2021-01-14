@@ -54,10 +54,8 @@ def run_loop_historize( # global parameters
                        # training parameters
                        train_loss,
                        val_loss,
-                       train_accuracy,
-                       val_acc, res_eval_result_atr_val, cm_val, pc_resultat_val,
-                       test1_acc, res_eval_result_atr_test1, cm_test1, pc_resultat_test1,
-                       test2_acc, res_eval_result_atr_test2, cm_test2, pc_resultat_test2):
+                       train_accuracy
+                       val_accuracy):
     #
     hist_model_fit_batch_size = []
     hist_model_fit_epochs_max = []
@@ -66,18 +64,7 @@ def run_loop_historize( # global parameters
     hist_train_loss = []
     hist_val_loss = []
     hist_train_accuracy = []
-    hist_val_acc = []
-    hist_res_eval_result_atr_val = []
-    hist_cm_val = []
-    hist_pc_resultat_val = []
-    hist_test1_acc = []
-    hist_res_eval_result_atr_test1 = []
-    hist_cm_test1 = []
-    hist_pc_resultat_test1 = []
-    hist_test2_acc = []
-    hist_res_eval_result_atr_test2 = []
-    hist_cm_test2 = []
-    hist_pc_resultat_test2 = []
+    hist_val_accuracy = []
     #
     hist_model_fit_batch_size.append(model_fit_batch_size)
     hist_model_fit_epochs_max.append(model_fit_epochs_max)
@@ -86,18 +73,7 @@ def run_loop_historize( # global parameters
     hist_train_loss.append(train_loss)
     hist_val_loss.append(val_loss)
     hist_train_accuracy.append(train_accuracy)
-    hist_val_acc.append(val_acc)
-    hist_res_eval_result_atr_val.append(res_eval_result_atr_val)
-    hist_cm_val.append(cm_val)
-    hist_pc_resultat_val.append(pc_resultat_val)
-    hist_test1_acc.append(test1_acc)
-    hist_res_eval_result_atr_test1.append(res_eval_result_atr_test1)
-    hist_cm_test1.append(cm_test1)
-    hist_pc_resultat_test1.append(pc_resultat_test1)
-    hist_test2_acc.append(test2_acc)
-    hist_res_eval_result_atr_test2.append(res_eval_result_atr_test2)
-    hist_cm_test2.append(cm_test2)
-    hist_pc_resultat_test2.append(pc_resultat_test2)
+    hist_val_accuracy.append(val_accuracy)
     #
     path = arbo.get_study_dir(py_dir, dataset_name) + dir_npy + '\\' + str(idx_run_loop)
     #
@@ -108,18 +84,7 @@ def run_loop_historize( # global parameters
     numpy.save(path + '_hist_train_loss.npy',                   hist_train_loss)
     numpy.save(path + '_hist_val_loss.npy',                     hist_val_loss)
     numpy.save(path + '_hist_train_accuracy.npy',               hist_train_accuracy)
-    numpy.save(path + '_hist_val_acc.npy',                      hist_val_acc)
-    numpy.save(path + '_hist_res_eval_result_atr_val.npy',      hist_res_eval_result_atr_val)
-    numpy.save(path + '_hist_cm_val.npy',                       hist_cm_val)
-    numpy.save(path + '_hist_pc_resultat_val.npy',              hist_pc_resultat_val)
-    numpy.save(path + '_hist_test1_acc.npy',                    hist_test1_acc)
-    numpy.save(path + '_hist_res_eval_result_atr_test1.npy',    hist_res_eval_result_atr_test1)
-    numpy.save(path + '_hist_cm_test1.npy',                     hist_cm_test1)
-    numpy.save(path + '_hist_pc_resultat_test1.npy',            hist_pc_resultat_test1)
-    numpy.save(path + '_hist_test2_acc.npy',                    hist_test2_acc)
-    numpy.save(path + '_hist_res_eval_result_atr_test2.npy',    hist_res_eval_result_atr_test2)
-    numpy.save(path + '_hist_cm_test2.npy',                     hist_cm_test2)
-    numpy.save(path + '_hist_pc_resultat_test2.npy',            hist_pc_resultat_test2)
+    numpy.save(path + '_hist_val_accuracy.npy',                 hist_val_accuracy)
     #
 
 
@@ -129,18 +94,14 @@ def npy_results(dataset_name, dir_npy, start_idx=0):
     #
     id_max_loop = new_npy_idx(dataset_name, dir_npy)
     #
+    param_list = []
+    #
+    _model_manager = model_manager()
+    model_manager_param_list = _model_manager.get_param_list()
+    for each_param in model_manager_param_list :
+        param_list.append(each_param)
+    #
     param_list = [
-        'config_Conv1D',
-        'conv1D_filters',
-        'conv1D_kernel_size',
-        'conv1D_block1_filters',
-        'conv1D_block1_kernel_size',
-        'conv1D_block1_MaxPooling1D_pool_size',
-        'conv1D_block2_filters',
-        'conv1D_block2_kernel_size',
-        'conv1D_block2_GlobalAveragePooling1D',
-        'config_LSTM',
-        'config_Dense',
         'acc',
         'val_acc',
         'loss',

@@ -86,54 +86,167 @@ output_step2_data_with_target = step2.prepare_target_data_with_define_target(
 # imports from this project
 #
 import learn_evaluate_results
-import ModelFactory
-from ModelFactory import CModelFactory
+import model_manager
+from model_manager import model_manager
 
 import learn_history
 
 # learning history
 _dir_npy = '\\npy_current'
 
+learning_data_base_template = { 'np_X' : None, 'df_y_Nd' : None, 'df_y_1d' : None, 'df_atr' : None }
+learning_data_template = { 'train' : None, 'val' : None, 'test1' : None, 'test2' : None }
 
-def learn_from_step3(step3_params, model_factory_params, loops_count=1):
+
+def create_step3_data(step3_params):
+    #
+    learning_data = learning_data_template.copy()
+    #
+    idx_generate_learning_data = step3_params['step3_idx_start']    # incrémenté à chaque appel à step3.generate_learning_data_dynamic3
+    resOK_test2, idx_generate_learning_data, np_X_test2, df_y_Nd_test2, df_y_1d_test2, df_atr_test2 = step3.generate_learning_data_dynamic3(
+        output_step2_data_with_target, idx_generate_learning_data,
+        step3_params['step3_recouvrement'], step3_params['step3_tests_by_class'], step3_params['step3_time_depth'],
+        step3_params['step3_column_names_to_scale'], step3_params['step3_column_names_not_to_scale'])
+    #
+    learning_data_base_test2 = learning_data_base_template.copy()
+    learning_data_base_test2['np_X'] = np_X_test2
+    learning_data_base_test2['df_y_Nd'] = df_y_Nd_test2
+    learning_data_base_test2['df_y_1d'] = df_y_1d_test2
+    learning_data_base_test2['df_atr'] = df_atr_test2
+    learning_data['test2'] = learning_data_base_test2
+    #
+    if resOK_test2 == False :
+        raise RuntimeError('Error during step3.generate_learning_data_dynamic3 for test2')
+    #
+    resOK_test1, idx_generate_learning_data, np_X_test1, df_y_Nd_test1, df_y_1d_test1, df_atr_test1 = step3.generate_learning_data_dynamic3(
+        output_step2_data_with_target, idx_generate_learning_data,
+        step3_params['step3_recouvrement'], step3_params['step3_tests_by_class'], step3_params['step3_time_depth'],
+        step3_params['step3_column_names_to_scale'], step3_params['step3_column_names_not_to_scale'])
+    #
+    learning_data_base_test1 = learning_data_base_template.copy()
+    learning_data_base_test1['np_X'] = np_X_test1
+    learning_data_base_test1['df_y_Nd'] = df_y_Nd_test1
+    learning_data_base_test1['df_y_1d'] = df_y_1d_test1
+    learning_data_base_test1['df_atr'] = df_atr_test1
+    learning_data['test1'] = learning_data_base_test1
+    #
+    if resOK_test1 == False :
+        raise RuntimeError('Error during step3.generate_learning_data_dynamic3 for test1')
+    #
+    resOK_val, idx_generate_learning_data, np_X_val, df_y_Nd_val, df_y_1d_val, df_atr_val = step3.generate_learning_data_dynamic3(
+        output_step2_data_with_target, idx_generate_learning_data,
+        step3_params['step3_recouvrement'], step3_params['step3_tests_by_class'], step3_params['step3_time_depth'],
+        step3_params['step3_column_names_to_scale'], step3_params['step3_column_names_not_to_scale'])
+    #
+    np_X_val, df_y_1d_val, df_y_Nd_val = sklearn.utils.shuffle(np_X_val, df_y_1d_val, df_y_Nd_val)
+    #
+    learning_data_base_val = learning_data_base_template.copy()
+    learning_data_base_val['np_X'] = np_X_val
+    learning_data_base_val['df_y_Nd'] = df_y_Nd_val
+    learning_data_base_val['df_y_1d'] = df_y_1d_val
+    learning_data_base_val['df_atr'] = df_atr_val
+    learning_data['val'] = learning_data_base_val
+    #
+    if resOK_val == False :
+        raise RuntimeError('Error during step3.generate_learning_data_dynamic3 for val')
+    #
+    resOK_train, idx_generate_learning_data, np_X_train, df_y_Nd_train, df_y_1d_train, df_atr_train = step3.generate_learning_data_dynamic3(
+        output_step2_data_with_target, idx_generate_learning_data,
+        step3_params['step3_recouvrement'], step3_params['step3_tests_by_class'], step3_params['step3_time_depth'],
+        step3_params['step3_column_names_to_scale'], step3_params['step3_column_names_not_to_scale'])
+    #
+    np_X_train, df_y_1d_train, df_y_Nd_train = sklearn.utils.shuffle(np_X_train, df_y_1d_train, df_y_Nd_train)
+    #
+    learning_data_base_train = learning_data_base_template.copy()
+    learning_data_base_train['np_X'] = np_X_train
+    learning_data_base_train['df_y_Nd'] = df_y_Nd_train
+    learning_data_base_train['df_y_1d'] = df_y_1d_train
+    learning_data_base_train['df_atr'] = df_atr_train
+    learning_data['train'] = learning_data_base_train
+    #
+    if resOK_train == False :
+        raise RuntimeError('Error during step3.generate_learning_data_dynamic3 for train')
+    #
+    return learning_data
+
+
+post_learning_metrics_template = { 'acc' : None, 'res_eval_result_atr' : None, 'cm' : None, 'pc_resultat' : None }
+
+
+def post_learning_metrics_template_save(  # global parameters
+               dataset_name,
+               dir_npy,
+               idx_run_loop,
+               params_dict, train_val_test):
+    #
+    path = arbo.get_study_dir(py_dir, dataset_name) + dir_npy + '\\' + str(idx_run_loop)
+    #
+    # for key       in params_dict.keys():
+    # for key_value in params_dict.values():
+    for key, key_value in step2_params.items():
+        tmp = []
+        tmp.append(key_value)
+        numpy.save(path + '_hist_' + key + '_' + train_val_test + '.npy',  tmp)
+
+
+
+def post_learning_metrics(model, learning_data, train_val_test):
+    #
+    np_X = learning_data[train_val_test]['np_X']
+    df_y_1d = learning_data[train_val_test]['df_y_1d']
+    df_atr= learning_data[train_val_test]['df_atr']
+    #
+    y_pred_raw = model.predict(np_X)  # avec les poids sortie modèle
+    df_y_pred = pandas.DataFrame(numpy.argmax(y_pred_raw, axis=-1))  # avec les poids forcés à 0/1
+    df_y_pred.index = df_y_1d.index
+    #
+    acc, res_eval_result_atr, cm, pc_resultat = learn_evaluate_results.evaluate_atr(
+        df_y_pred, df_y_1d, df_atr,
+        step2.step2_params['step2_symbol_spread'], step2.step2_params['step2_ratio_coupure'])
+    print("--- results analysis for ",train_val_test)
+    print('res_eval_result_atr = ', res_eval_result_atr, '\tpc_resultat =', pc_resultat)
+    print('acc = ', acc)
+    print(cm)
+    learn_evaluate_results.cm_metrics(cm)
+    print("---")
+    #
+    result = post_learning_metrics_template.copy()
+    result['acc'] = acc
+    result['res_eval_result_atr'] = res_eval_result_atr
+    result['cm'] = cm
+    result['pc_resultat'] = pc_resultat
+    return result
+
+
+def learn_from_step3(step3_params, _model_manager, loops_count=1):
     #
     idx_run_loop = learn_history.new_npy_idx(_dataset_name, _dir_npy)
     #
-    idx_generate_learning_data = step3_params['step3_idx_start']    # incrémenté à chaque appel à step3.generate_learning_data_dynamic3
-    resOK_train, idx_generate_learning_data, np_X_test2, df_y_Nd_test2, df_y_1d_test2, df_atr_test2 = step3.generate_learning_data_dynamic3(
-        output_step2_data_with_target, idx_generate_learning_data,
-        step3_params['step3_recouvrement'], step3_params['step3_tests_by_class'], step3_params['step3_time_depth'],
-        step3_params['step3_column_names_to_scale'], step3_params['step3_column_names_not_to_scale'])
-    resOK_val, idx_generate_learning_data, np_X_test1, df_y_Nd_test1, df_y_1d_test1, df_atr_test1 = step3.generate_learning_data_dynamic3(
-        output_step2_data_with_target, idx_generate_learning_data,
-        step3_params['step3_recouvrement'], step3_params['step3_tests_by_class'], step3_params['step3_time_depth'],
-        step3_params['step3_column_names_to_scale'], step3_params['step3_column_names_not_to_scale'])
-    resOK_test1, idx_generate_learning_data, np_X_val, df_y_Nd_val, df_y_1d_val, df_atr_val = step3.generate_learning_data_dynamic3(
-        output_step2_data_with_target, idx_generate_learning_data,
-        step3_params['step3_recouvrement'], step3_params['step3_tests_by_class'], step3_params['step3_time_depth'],
-        step3_params['step3_column_names_to_scale'], step3_params['step3_column_names_not_to_scale'])
-    resOK_test2, idx_generate_learning_data, np_X_train, df_y_Nd_train, df_y_1d_train, df_atr_train = step3.generate_learning_data_dynamic3(
-        output_step2_data_with_target, idx_generate_learning_data,
-        step3_params['step3_recouvrement'], step3_params['step3_tests_by_class'], step3_params['step3_time_depth'],
-        step3_params['step3_column_names_to_scale'], step3_params['step3_column_names_not_to_scale'])
-    #
-    if ((resOK_train == False) or (resOK_val == False) or (resOK_test1 == False) or (resOK_test2 == False)):
+    try:
+        learning_data = create_step3_data(step3_params)
+    except:
         print("step3.generate_learning_data_dynamic3 failed. STOP")
         return
     #
-    # bizarrement si on enlève ce shuffle il n'y a plus de convergence, bien qu'un nouveau shuffle soit fait plus tard par model.fit
-    # TODO à mettre en paramètre ici et rééessayer de l'enlever...
-    np_X_train, df_y_1d_train, df_y_Nd_train = sklearn.utils.shuffle(np_X_train, df_y_1d_train, df_y_Nd_train)
-    np_X_val, df_y_1d_val, df_y_Nd_val = sklearn.utils.shuffle(np_X_val, df_y_1d_val, df_y_Nd_val)
+    # Setting of last model manager properties that need information about data generation
     #
-    input_features = np_X_train.shape[2]
-    input_timesteps = np_X_train.shape[1]
-    output_shape = df_y_Nd_train.shape[1]
+    input_features = learning_data['train']['np_X'].shape[2]
+    input_timesteps = learning_data['train']['np_X'].shape[1]
+    output_shape = learning_data['train']['df_y_Nd'].shape[1]
+    train_params = learning_data['train']['np_X'].shape[0]
     print("input_features=", input_features)
     print("input_timesteps=", input_timesteps)
     print("output_shape=", output_shape)
-    train_samples = np_X_train.shape[0]
-    print("train_samples=", train_samples)
+    print("train_params=", train_params)
+    #
+    _mm_dict = _model_manager.get_properties()
+    #
+    _mm_dict['input_features'] = input_features
+    _mm_dict['input_timesteps'] = input_timesteps
+    _mm_dict['output_shape'] = output_shape
+    _mm_dict['train_params'] = train_params
+    #
+    _model_manager.update_properties(_mm_dict)
     #
     for i in range(0, loops_count):
         print("")
@@ -141,17 +254,19 @@ def learn_from_step3(step3_params, model_factory_params, loops_count=1):
         print("Repeat #", i + 1, " /", loops_count)
         print("-----------------------------------------------------------")
         print("")
-        model, model_factory = define_model(model_factory_params, input_features, input_timesteps, output_shape, train_samples)
+        #
+        model = _model_manager.create_compile_model()
         #
         if (i == 0):  # affiché uniquement au premier passage pour désaturer l'affichage
             print(model.summary())
             print("model.count_params()=", model.count_params())
-            print("np_X_train.shape[0]*np_X_train.shape[1]*np_X_train.shape[2] (X_train_params) : ", train_samples*input_timesteps*input_features)
+            print("train_params : ", train_params)
         #
         callback = keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=model_fit_earlystopping_patience, restore_best_weights=True)
-        history = model.fit(np_X_train, df_y_Nd_train, model_fit_batch_size, shuffle=False, epochs=model_fit_epochs_max,
+        history = model.fit(learning_data['train']['np_X'], learning_data['train']['df_y_Nd'],
+                            model_fit_batch_size, shuffle=False, epochs=model_fit_epochs_max,
                             callbacks=[callback], verbose=1,
-                            validation_data=(np_X_val, df_y_Nd_val))
+                            validation_data=(learning_data['val']['np_X'], learning_data['val']['df_y_Nd']))
         #
         train_loss = round(min(history.history['loss']), 3)
         val_loss = round(min(history.history['val_loss']), 3)
@@ -163,48 +278,16 @@ def learn_from_step3(step3_params, model_factory_params, loops_count=1):
         print("val_accuracy   = ", val_accuracy)
         print("---")
         #
-        y_pred_raw = model.predict(np_X_val)  # avec les poids sortie modèle
-        df_y_pred_val = pandas.DataFrame(numpy.argmax(y_pred_raw, axis=-1))  # avec les poids forcés à 0/1
-        df_y_pred_val.index = df_y_1d_val.index
+        post_learning_metrics_val   = post_learning_metrics(model, learning_data, 'val')
+        post_learning_metrics_test1 = post_learning_metrics(model, learning_data, 'test1')
+        post_learning_metrics_test2 = post_learning_metrics(model, learning_data, 'test2')
         #
-        val_acc, res_eval_result_atr_val, cm_val, pc_resultat_val = learn_evaluate_results.evaluate_atr(
-            df_y_pred_val, df_y_1d_val, df_atr_val,
-            step2.step2_params['step2_symbol_spread'], step2.step2_params['step2_ratio_coupure'])
-        print('==>> res_eval_result_atr_val = ', res_eval_result_atr_val, '\tpc_resultat_val =', pc_resultat_val)
-        print('val_acc = ', val_acc)
-        print(cm_val)
-        learn_evaluate_results.cm_metrics(cm_val)
-        print("---")
-        #
-        df_y_pred1 = pandas.DataFrame(numpy.argmax(model.predict(np_X_test1), axis=-1))
-        df_y_pred1.index = df_y_1d_test1.index
-        #
-        test1_acc, res_eval_result_atr_test1, cm_test1, pc_resultat_test1 = learn_evaluate_results.evaluate_atr(
-            df_y_pred1, df_y_1d_test1, df_atr_test1,
-            step2.step2_params['step2_symbol_spread'], step2.step2_params['step2_ratio_coupure'])
-        print('==>> res_eval_result_atr_test1 = ', res_eval_result_atr_test1, '\tpc_resultat_test1 =',
-              pc_resultat_test1)
-        print('test1_acc = ', test1_acc)
-        print(cm_test1)
-        learn_evaluate_results.cm_metrics(cm_test1)
-        print("---")
-        #
-        df_y_pred2 = pandas.DataFrame(numpy.argmax(model.predict(np_X_test2), axis=-1))
-        df_y_pred2.index = df_y_1d_test2.index
-        #
-        test2_acc, res_eval_result_atr_test2, cm_test2, pc_resultat_test2 = learn_evaluate_results.evaluate_atr(
-            df_y_pred2, df_y_1d_test2, df_atr_test2,
-            step2.step2_params['step2_symbol_spread'], step2.step2_params['step2_ratio_coupure'])
-        print('==>> res_eval_result_atr_test2 = ', res_eval_result_atr_test2, '\tpc_resultat_test2 =',
-              pc_resultat_test2)
-        print('test2_acc= ', test2_acc)
-        print(cm_test2)
-        learn_evaluate_results.cm_metrics(cm_test2)
-        print("---")
-        #
-        model_factory.save_model(_dataset_name, _dir_npy, idx_run_loop)
+        model_manager.save(_dataset_name, _dir_npy, idx_run_loop)
         step2.step2_save(_dataset_name, _dir_npy, idx_run_loop, step2.step2_params)
         step3.step3_save(_dataset_name, _dir_npy, idx_run_loop, step3_params)
+        post_learning_metrics_template_save(_dataset_name, _dir_npy, idx_run_loop, post_learning_metrics_val, 'val')
+        post_learning_metrics_template_save(_dataset_name, _dir_npy, idx_run_loop, post_learning_metrics_train1, 'train1')
+        post_learning_metrics_template_save(_dataset_name, _dir_npy, idx_run_loop, post_learning_metrics_train2, 'train2')
         #
         learn_history.run_loop_historize(_dataset_name,
                                          _dir_npy,
@@ -217,84 +300,68 @@ def learn_from_step3(step3_params, model_factory_params, loops_count=1):
                                          train_loss,
                                          val_loss,
                                          train_accuracy,
-                                         val_accuracy, res_eval_result_atr_val, cm_val, pc_resultat_val,
-                                         test1_acc, res_eval_result_atr_test1, cm_test1, pc_resultat_test1,
-                                         test2_acc, res_eval_result_atr_test2, cm_test2, pc_resultat_test2)
+                                         val_accuracy)
         idx_run_loop += 1
         #
-        del model  # attention en supprimant le modèle on perd l'apprentissage ici
+        del model
     #
 
-def define_model(model_factory_params, input_features, input_timesteps, output_shape, train_samples):
-    model_factory = CModelFactory()
-    #
-    model_factory.set_params_Conv1D(model_factory_params['conv1D_block1_filters'],
-                                    model_factory_params['conv1D_block1_kernel_size'],
-                                    model_factory_params['conv1D_block1_MaxPooling1D_pool_size'])
-    model_factory.set_params_GRU_LSTM(model_factory_params['config_GRU_LSTM_units'])
-    model_factory.set_params_Dense(model_factory_params['config_Dense_units'])
-    #
-    model_factory.set_params_optimizer(model_factory_params['optimizer_name'],
-                                       model_factory_params['optimizer_modif_learning_rate'])
-    model_factory.set_dropout_rate(model_factory_params['dropout_rate'])
-    model_factory.set_params_inout(input_features, input_timesteps, output_shape, train_samples)
-    #
-    model = model_factory.create_compile_model(model_factory_params['model_architecture'])
-    return model, model_factory
-
-
-# learning parameters (fit) TODO
-model_fit_batch_size = 32
-model_fit_epochs_max = 500
-model_fit_earlystopping_patience = 100
 
 #
 # Ici point d'entrée pour ajuster les paramètres ou coder les boucles de variations
 #
 def execute():
     #
-    # step3 parameters
+    _model_manager = model_manager()
+    #
+    # step3 parameters : unchanged during loop
     #
     step3.step3_params['step3_column_names_to_scale'] = []
     step3.step3_params['step3_column_names_not_to_scale'] = [
         'UsaInd_M15_time_slot',
         'UsaInd_M15_pRSI_3', 'UsaInd_M15_pRSI_5', 'UsaInd_M15_pRSI_8', 'UsaInd_M15_pRSI_13', 'UsaInd_M15_pRSI_21']
+    step3.step3_params['step3_tests_by_class'] = 66
+    step3.step3_params['step3_idx_start'] = 0  # step3_idx_start = int(random.random()*1000)
+    #
     for step3_recouvrement in (8, 13, 21, 34, 55, 89, 144, 233):   #(2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233):
-        step3.step3_params['step3_recouvrement'] = step3_recouvrement  # 1 / proportion recouvrement
-        step3.step3_params['step3_tests_by_class'] = 66
-        step3.step3_params['step3_time_depth'] = step3.step3_params['step3_recouvrement']
-        step3.step3_params['step3_idx_start'] = 0
-        # step3_idx_start = int(random.random()*1000)
         for step3_samples_by_class in (330, 660):    #(330, 660, 990, 1320, 1650, 1980):
+            #
+            # step3 parameters : modified by this loop
+            #
+            step3.step3_params['step3_recouvrement'] = step3_recouvrement  # 1 / proportion recouvrement
+            step3.step3_params['step3_time_depth'] = step3_recouvrement
             step3.step3_params['step3_samples_by_class'] = step3_samples_by_class
             #
+            # Model and learning parameters : unchanged during loop
             #
-            # Model and learning parameters / TODO plus en variables globales
+            _mm_dict = _model_manager.get_properties()
             #
+            _mm_dict['model_architecture'] = 'Conv1D_Dense'
+            _mm_dict['conv1D_block1_MaxPooling1D_pool_size'] = 2
+            _mm_dict['config_GRU_LSTM_units'] = 128
+            _mm_dict['config_Dense_units'] = 96
+            _mm_dict['dropout_rate'] = 0.5
+            _mm_dict['optimizer_name'] = 'adam'
+            _mm_dict['optimizer_modif_learning_rate'] = 0.75
             #
-            # Model and learning parameters / TODO plus en variables globales
-            #
-            ModelFactory.model_factory_params['model_architecture'] = 'Conv1D_Dense'
-            #
-            ModelFactory.model_factory_params['conv1D_block1_filters'] = 0
-            ModelFactory.model_factory_params['conv1D_block1_kernel_size'] = 6
-            ModelFactory.model_factory_params['conv1D_block1_MaxPooling1D_pool_size'] = 2
-            #
-            ModelFactory.model_factory_params['config_GRU_LSTM_units'] = 128
-            #
-            ModelFactory.model_factory_params['config_Dense_units'] = 96
-            ModelFactory.model_factory_params['config_Dense_units2'] = 0
-            #
-            ModelFactory.model_factory_params['optimizer_name'] = 0
-            ModelFactory.model_factory_params['optimizer_modif_learning_rate'] = 0
-            #
-            ModelFactory.model_factory_params['dropout_rate'] = 0.5
-            ModelFactory.model_factory_params['optimizer_name'] = 'adam'
-            ModelFactory.model_factory_params['optimizer_modif_learning_rate'] = 0.75
+# learning parameters (fit) TODO
+model_fit_batch_size = 32
+model_fit_epochs_max = 500
+model_fit_earlystopping_patience = 100
+            
+            _model_manager.update_properties(_mm_dict)
             #
             for conv1D_block1_filters in (55,89,144,233,377,610,987):
-                ModelFactory.model_factory_params['conv1D_block1_filters'] = conv1D_block1_filters
                 for conv1D_block1_kernel_size in (2,3,5):
-                    ModelFactory.model_factory_params['conv1D_block1_kernel_size'] = conv1D_block1_kernel_size
-                    learn_from_step3(step3.step3_params, ModelFactory.model_factory_params)
+                    #
+                    # Model and learning parameters : modified by this loop
+                    #
+                    _mm_dict = _model_manager.get_properties()
+                    #
+                    _mm_dict['conv1D_block1_filters'] = conv1D_block1_filters
+                    _mm_dict['conv1D_block1_kernel_size'] = conv1D_block1_kernel_size
+                    #
+                    _model_manager.update_properties(_mm_dict)
+                    #
+                    learn_from_step3(step3.step3_params, _model_manager)
 
