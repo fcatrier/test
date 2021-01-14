@@ -143,7 +143,7 @@ class model_manager:
         else:
             raise ValueError('Unknown optimizer_choice')
     #
-    def create_compile_model(self):
+    def __create_compile_model(self):
         #
         model = None
         if self.__model_dict['model_architecture'] == 'Conv1D_Dense':
@@ -163,16 +163,9 @@ class model_manager:
         #
         return model
     #
-    def finalize_model(model_manager_dict, input_features, input_timesteps, output_shape, train_params):
-        model_manager = ModelManager()
-        #
-        model_manager.set_params_inout(input_features, input_timesteps, output_shape, train_params)
-        #
-        model = model_manager.create_compile_model()
-        return model, model_manager
-    #
     def fit(self):
-        model = define_model(model_manager_dict, input_features, input_timesteps, output_shape, train_params)
+        #
+        model = self.__create_compile_model(self)
         #
         callback = keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=model_fit_earlystopping_patience, restore_best_weights=True)
         history = model.fit(np_X_train, df_y_Nd_train, model_fit_batch_size, shuffle=False, epochs=model_fit_epochs_max,
@@ -190,13 +183,13 @@ class model_manager:
         #
         # for key       in params_dict.keys():
         # for key_value in params_dict.values():
-        for key, key_value in __model_dict.items():
+        for key, key_value in self.__model_dict.items():
             tmp = []
             tmp.append(key_value)
             numpy.save(path + '_hist_' + key + '.npy',  tmp)
     #
     def get_param_list(self):
         param_list = []
-        for key, key_value in __model_dict.items():
+        for key, key_value in self.__model_dict.items():
             param_list.append(key)
-    #
+        return param_list

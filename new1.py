@@ -24,6 +24,8 @@ import numpy
 import sklearn
 from sklearn.utils import shuffle
 
+import arbo
+
 # -----------------------------------------------------------------------------
 # 1_dataset_prepare_raw_data
 # -----------------------------------------------------------------------------
@@ -183,7 +185,7 @@ def post_learning_metrics_template_save(  # global parameters
     #
     # for key       in params_dict.keys():
     # for key_value in params_dict.values():
-    for key, key_value in step2_params.items():
+    for key, key_value in params_dict.items():
         tmp = []
         tmp.append(key_value)
         numpy.save(path + '_hist_' + key + '_' + train_val_test + '.npy',  tmp)
@@ -286,8 +288,8 @@ def learn_from_step3(step3_params, _model_manager, loops_count=1):
         step2.step2_save(_dataset_name, _dir_npy, idx_run_loop, step2.step2_params)
         step3.step3_save(_dataset_name, _dir_npy, idx_run_loop, step3_params)
         post_learning_metrics_template_save(_dataset_name, _dir_npy, idx_run_loop, post_learning_metrics_val, 'val')
-        post_learning_metrics_template_save(_dataset_name, _dir_npy, idx_run_loop, post_learning_metrics_train1, 'train1')
-        post_learning_metrics_template_save(_dataset_name, _dir_npy, idx_run_loop, post_learning_metrics_train2, 'train2')
+        post_learning_metrics_template_save(_dataset_name, _dir_npy, idx_run_loop, post_learning_metrics_test1, 'train1')
+        post_learning_metrics_template_save(_dataset_name, _dir_npy, idx_run_loop, post_learning_metrics_test2, 'train2')
         #
         learn_history.run_loop_historize(_dataset_name,
                                          _dir_npy,
@@ -344,11 +346,11 @@ def execute():
             _mm_dict['optimizer_name'] = 'adam'
             _mm_dict['optimizer_modif_learning_rate'] = 0.75
             #
-# learning parameters (fit) TODO
-model_fit_batch_size = 32
-model_fit_epochs_max = 500
-model_fit_earlystopping_patience = 100
-            
+            # learning parameters (fit) TODO
+            model_fit_batch_size = 32
+            model_fit_epochs_max = 500
+            model_fit_earlystopping_patience = 100
+            #
             _model_manager.update_properties(_mm_dict)
             #
             for conv1D_block1_filters in (55,89,144,233,377,610,987):
