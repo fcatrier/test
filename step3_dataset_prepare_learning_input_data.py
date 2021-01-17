@@ -16,6 +16,8 @@ cur_dir = os.getcwd()
 if cur_dir == 'C:\\Users\\T0042310\\MyApp\\miniconda3':
     sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\TF')
     py_dir = 'C:\\Users\\T0042310\\Documents\\Perso\\Py'
+elif cur_dir == 'C:\\Users\\Frédéri\\PycharmProjects\\pythonProject':
+    py_dir = 'C:\\Users\\Frédéri\\Py'
 else:
     sys.path.append('E:\\Py\\pythonProject')
     sys.path.append('C:\\Program Files\\NVIDIA GPU Computing Toolkit\\cuDNN\\cuDNN v7.6.5 for CUDA 10.1\\bin')
@@ -25,7 +27,7 @@ else:
 
 
 import arbo
-import step2_dataset_prepare_target_data           as step2
+import step2_dataset_prepare_target_data as step2
 
 import pandas
 import numpy
@@ -41,6 +43,13 @@ step3_params = {
     'step3_samples_by_class' : 0,
     'step3_tests_by_class' : 0,
     'step3_time_depth' : 0 }
+
+
+def get_param_list():
+    param_list = []
+    for key, key_value in step3_params.items():
+        param_list.append(key)
+    return param_list
 
 def step3_save(  # global parameters
                dataset_name,

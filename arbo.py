@@ -1,3 +1,7 @@
+#
+# Copyright (c) 2020-2021 by Frederi CATRIER - All rights reserved.
+#
+
 # -----------------------------------------------------------------------------
 # Définition des chemins
 # -----------------------------------------------------------------------------
@@ -87,3 +91,7 @@ def get_learning_files_database_dir(py_dir, dataset_name):
 # print(arbo.get_run_dir_train(py_dir,dataset_name))
 # print(arbo.get_run_dir_val(py_dir,dataset_name))
 # print(arbo.get_model_dir(py_dir,dataset_name))
+
+def get_npy_path(dataset_name, dir_npy, idx_run_loop):
+    path = get_study_dir(py_dir, dataset_name) + dir_npy + '\\' + str(idx_run_loop)
+    return path

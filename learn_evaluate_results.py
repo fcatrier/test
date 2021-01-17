@@ -6,9 +6,62 @@
 # Méthodes pour l'analyse des résultats post learning
 # -----------------------------------------------------------------------------
 
+import os
+import sys
 import pandas
 import numpy
 from sklearn.metrics import confusion_matrix
+
+
+cur_dir = os.getcwd()
+if cur_dir == 'C:\\Users\\T0042310\\MyApp\\miniconda3':
+    sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\TF')
+    py_dir = 'C:\\Users\\T0042310\\Documents\\Perso\\Py'
+elif cur_dir == 'C:\\Users\\Frédéri\\PycharmProjects\\pythonProject':
+    py_dir = 'C:\\Users\\Frédéri\\Py'
+else:
+    sys.path.append('E:\\Py\\pythonProject')
+    sys.path.append('C:\\Program Files\\NVIDIA GPU Computing Toolkit\\cuDNN\\cuDNN v7.6.5 for CUDA 10.1\\bin')
+    sys.path.append('C:\\Program Files\\NVIDIA GPU Computing Toolkit\\cuDNN\\cuDNN v8.0.3.33 for CUDA 10.1\\bin')
+    sys.path.append('C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v10.1\\bin')
+    py_dir = 'E:\\Py'
+
+
+import arbo
+import step2_dataset_prepare_target_data as step2
+
+
+learning_metrics_template = { 'train_loss' : None, 'val_loss' : None, 'train_accuracy' : None, 'val_accuracy' : None }
+
+post_learning_metrics_template = { 'acc' : None, 'res_eval_result_atr' : None, 'cm' : None, 'pc_resultat' : None }
+
+
+def post_learning_metrics(model, learning_data, train_val_test):
+    #
+    np_X = learning_data[train_val_test]['np_X']
+    df_y_1d = learning_data[train_val_test]['df_y_1d']
+    df_atr= learning_data[train_val_test]['df_atr']
+    #
+    y_pred_raw = model.predict(np_X)  # avec les poids sortie modèle
+    df_y_pred = pandas.DataFrame(numpy.argmax(y_pred_raw, axis=-1))  # avec les poids forcés à 0/1
+    df_y_pred.index = df_y_1d.index
+    #
+    acc, res_eval_result_atr, cm, pc_resultat = evaluate_atr(
+        df_y_pred, df_y_1d, df_atr,
+        step2.step2_params['step2_symbol_spread'], step2.step2_params['step2_ratio_coupure'])
+    print("--- results analysis for ",train_val_test)
+    print('res_eval_result_atr = ', res_eval_result_atr, '\tpc_resultat =', pc_resultat)
+    print('acc = ', acc)
+    print(cm)
+    cm_metrics(cm)
+    print("---")
+    #
+    result = post_learning_metrics_template.copy()
+    result['acc'] = acc
+    result['res_eval_result_atr'] = res_eval_result_atr
+    result['cm'] = cm
+    result['pc_resultat'] = pc_resultat
+    return result
 
 
 def evaluate_not_atr(df_y_pred, df_y_1d_test, df_atr_test, target_long_short, step2_symbol_spread, step2_ratio_coupure):

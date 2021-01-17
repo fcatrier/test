@@ -1,4 +1,8 @@
 #
+# Copyright (c) 2020-2021 by Frederi CATRIER - All rights reserved.
+#
+
+#
 # TODO
 #
 #  6 - ajouter informations (voir données dans XL Cockpit)
@@ -15,6 +19,8 @@ cur_dir = os.getcwd()
 if cur_dir == 'C:\\Users\\T0042310\\MyApp\\miniconda3':
     sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\TF')
     py_dir = 'C:\\Users\\T0042310\\Documents\\Perso\\Py'
+elif cur_dir == 'C:\\Users\\Frédéri\\PycharmProjects\\pythonProject':
+    py_dir = 'C:\\Users\\Frédéri\\Py'
 else:
     sys.path.append('E:\\Py\\pythonProject')
     sys.path.append('C:\\Program Files\\NVIDIA GPU Computing Toolkit\\cuDNN\\cuDNN v7.6.5 for CUDA 10.1\\bin')
@@ -39,68 +45,11 @@ step2_params = {
     'step2_ratio_coupure' : 0.0,
     'step2_use_ATR' : True}
 
-
-def save_params(  # global parameters
-               dataset_name,
-               dir_npy,
-               idx_run_loop,
-               params_dict):
-    #
-    path = arbo.get_study_dir(py_dir, dataset_name) + dir_npy + '\\' + str(idx_run_loop)
-    #
-    # for key       in params_dict.keys():
-    # for key_value in params_dict.values():
+def get_param_list():
+    param_list = []
     for key, key_value in step2_params.items():
-        tmp = []
-        tmp.append(key_value)
-        numpy.save(path + '_hist_' + key + '.npy',  tmp)
-
-
-def step2_save(  # global parameters
-               dataset_name,
-               dir_npy,
-               idx_run_loop,
-               step2_params):
-    #
-    # historisation de tous les paramètres
-    #
-
-
-
-
-    'step2_symbol_spread' : 0.0,
-    'step2_targets_classes_count' : 0,
-    'step2_targetLongShort' : 0.0,
-    'step2_ratio_coupure' : 0.0,
-    'step2_use_ATR' : True}
-
-    hist_step2_target_class_col_name = []
-    hist_step2_profondeur_analyse = []
-    hist_step2_target_period = []
-    hist_step2_symbol_for_target = []
-    hist_step2_targets_classes_count = []
-    hist_step2_targetLongShort = []
-    hist_step2_ratio_coupure = []
-    #
-    hist_step2_target_class_col_name.append(step2_params['step2_target_class_col_name'])
-    hist_step2_profondeur_analyse.append(step2_params['step2_profondeur_analyse'])
-    hist_step2_target_period.append(step2_params['step2_target_period'])
-    hist_step2_symbol_for_target.append(step2_params['step2_symbol_for_target'])
-    hist_step2_targets_classes_count.append(step2_params['step2_targets_classes_count'])
-    hist_step2_targetLongShort.append(step2_params['step2_targetLongShort'])
-    hist_step2_ratio_coupure.append(step2_params['step2_ratio_coupure'])
-    #
-    path = arbo.get_study_dir(py_dir, dataset_name) + dir_npy + '\\' + str(idx_run_loop)
-    #
-    numpy.save(path + '_hist_step2_target_class_col_name.npy',  hist_step2_target_class_col_name)
-    numpy.save(path + '_hist_step2_profondeur_analyse.npy',     hist_step2_profondeur_analyse)
-    numpy.save(path + '_hist_step2_target_period.npy',          hist_step2_target_period)
-    numpy.save(path + '_hist_step2_symbol_for_target.npy',      hist_step2_symbol_for_target)
-    numpy.save(path + '_hist_step2_targets_classes_count.npy',  hist_step2_targets_classes_count)
-    numpy.save(path + '_hist_step2_targetLongShort.npy',        hist_step2_targetLongShort)
-    numpy.save(path + '_hist_step2_ratio_coupure.npy',          hist_step2_ratio_coupure)
-    #
-
+        param_list.append(key)
+    return param_list
 
 """
 

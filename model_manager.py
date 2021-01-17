@@ -9,14 +9,14 @@ cur_dir = os.getcwd()
 if cur_dir == 'C:\\Users\\T0042310\\MyApp\\miniconda3':
     sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\TF')
     py_dir = 'C:\\Users\\T0042310\\Documents\\Perso\\Py'
+elif cur_dir == 'C:\\Users\\Frédéri\\PycharmProjects\\pythonProject':
+    py_dir = 'C:\\Users\\Frédéri\\Py'
 else:
     sys.path.append('E:\\Py\\pythonProject')
     sys.path.append('C:\\Program Files\\NVIDIA GPU Computing Toolkit\\cuDNN\\cuDNN v7.6.5 for CUDA 10.1\\bin')
     sys.path.append('C:\\Program Files\\NVIDIA GPU Computing Toolkit\\cuDNN\\cuDNN v8.0.3.33 for CUDA 10.1\\bin')
     sys.path.append('C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v10.1\\bin')
     py_dir = 'E:\\Py'
-
-
 
 import arbo
 
@@ -26,7 +26,7 @@ from keras.layers.convolutional import Conv1D, MaxPooling1D
 import numpy
 
 
-class model_manager:
+class cmodel_manager:
     #
     __model_dict = dict ([
         #
@@ -49,7 +49,11 @@ class model_manager:
         ('input_timesteps', -1),
         ('output_shape', -1),
         ('model_count_params', -1),
-        ('X_train_params', -1)
+        ('X_train_params', -1),
+        #
+        ('fit_batch_size', 32),
+        ('fit_epochs_max', 500),
+        ('fit_earlystopping_patience', 100)
     ])
     #
     def __init__(self):
@@ -143,7 +147,7 @@ class model_manager:
         else:
             raise ValueError('Unknown optimizer_choice')
     #
-    def __create_compile_model(self):
+    def create_compile_model(self):
         #
         model = None
         if self.__model_dict['model_architecture'] == 'Conv1D_Dense':
@@ -163,30 +167,33 @@ class model_manager:
         #
         return model
     #
-    def fit(self):
-        #
-        model = self.__create_compile_model(self)
-        #
-        callback = keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=model_fit_earlystopping_patience, restore_best_weights=True)
-        history = model.fit(np_X_train, df_y_Nd_train, model_fit_batch_size, shuffle=False, epochs=model_fit_epochs_max,
-                            callbacks=[callback], verbose=1,
-                            validation_data=(np_X_val, df_y_Nd_val))
-        #
-        train_loss = round(min(history.history['loss']), 3)
-        val_loss = round(min(history.history['val_loss']), 3)
-        train_accuracy = round(max(history.history['accuracy']), 2)
-        val_accuracy = round(max(history.history['val_accuracy']), 2)
+    # def fit(self):
+    #     #
+    #     model = self.create_compile_model()
+    #     #
+    #     callback = keras.callbacks.EarlyStopping(monitor='val_accuracy',
+    #                                              patience=self.__model_dict['fit_earlystopping_patience'],
+    #                                              restore_best_weights=True)
+    #     history = model.fit(np_X_train, df_y_Nd_train,
+    #                         self.__model_dict['fit_batch_size'],
+    #                         shuffle=False,
+    #                         epochs=self.__model_dict['model_fit_epochs_max'],
+    #                         callbacks=[callback], verbose=1,
+    #                         validation_data=(np_X_val, df_y_Nd_val))
+    #     #
+    #     train_loss = round(min(history.history['loss']), 3)
+    #     val_loss = round(min(history.history['val_loss']), 3)
+    #     train_accuracy = round(max(history.history['accuracy']), 2)
+    #     val_accuracy = round(max(history.history['val_accuracy']), 2)
     #
-    def save(self, dataset_name, dir_npy, idx_run_loop):
-        #
-        path = arbo.get_study_dir(py_dir, dataset_name) + dir_npy + '\\' + str(idx_run_loop)
+    def save(self, npy_path_prefix):
         #
         # for key       in params_dict.keys():
         # for key_value in params_dict.values():
         for key, key_value in self.__model_dict.items():
             tmp = []
             tmp.append(key_value)
-            numpy.save(path + '_hist_' + key + '.npy',  tmp)
+            numpy.save(npy_path_prefix + '_hist_' + key + '.npy',  tmp)
     #
     def get_param_list(self):
         param_list = []
