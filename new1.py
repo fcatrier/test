@@ -5,17 +5,11 @@
 import os
 import sys
 import keras
-import pandas
-import sklearn
-from sklearn.utils import shuffle
-
 
 cur_dir = os.getcwd()
 if cur_dir == 'C:\\Users\\T0042310\\MyApp\\miniconda3':
     sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\TF')
     py_dir = 'C:\\Users\\T0042310\\Documents\\Perso\\Py'
-elif cur_dir == 'C:\\Users\\Frédéri\\PycharmProjects\\pythonProject':
-    py_dir = 'C:\\Users\\Frédéri\\Py'
 else:
     sys.path.append('E:\\Py\\pythonProject')
     sys.path.append('C:\\Program Files\\NVIDIA GPU Computing Toolkit\\cuDNN\\cuDNN v7.6.5 for CUDA 10.1\\bin')
@@ -23,9 +17,14 @@ else:
     sys.path.append('C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v10.1\\bin')
     py_dir = 'E:\\Py'
 
-import arbo
-import utils
 
+import pandas
+import numpy
+
+import sklearn
+from sklearn.utils import shuffle
+
+import arbo
 
 # -----------------------------------------------------------------------------
 # 1_dataset_prepare_raw_data
@@ -34,8 +33,6 @@ import utils
 import step1_dataset_prepare_raw_data as step1
 
 _dataset_name = 'work'
-# learning history
-_dir_npy = '\\npy_current'
 
 Usa500_dfH1, Usa500_dfM30, Usa500_dfM15, Usa500_dfM5, \
 UsaInd_dfH1, UsaInd_dfM30, UsaInd_dfM15, UsaInd_dfM5, \
@@ -91,9 +88,13 @@ output_step2_data_with_target = step2.prepare_target_data_with_define_target(
 # imports from this project
 #
 import learn_evaluate_results
-from model_manager import cmodel_manager
+import model_manager
+from model_manager import model_manager
 
 import learn_history
+
+# learning history
+_dir_npy = '\\npy_current'
 
 learning_data_base_template = { 'np_X' : None, 'df_y_Nd' : None, 'df_y_1d' : None, 'df_atr' : None }
 learning_data_template = { 'train' : None, 'val' : None, 'test1' : None, 'test2' : None }
@@ -171,10 +172,57 @@ def create_step3_data(step3_params):
     return learning_data
 
 
+post_learning_metrics_template = { 'acc' : None, 'res_eval_result_atr' : None, 'cm' : None, 'pc_resultat' : None }
+
+
+def post_learning_metrics_template_save(  # global parameters
+               dataset_name,
+               dir_npy,
+               idx_run_loop,
+               params_dict, train_val_test):
+    #
+    path = arbo.get_study_dir(py_dir, dataset_name) + dir_npy + '\\' + str(idx_run_loop)
+    #
+    # for key       in params_dict.keys():
+    # for key_value in params_dict.values():
+    for key, key_value in params_dict.items():
+        tmp = []
+        tmp.append(key_value)
+        numpy.save(path + '_hist_' + key + '_' + train_val_test + '.npy',  tmp)
+
+
+
+def post_learning_metrics(model, learning_data, train_val_test):
+    #
+    np_X = learning_data[train_val_test]['np_X']
+    df_y_1d = learning_data[train_val_test]['df_y_1d']
+    df_atr= learning_data[train_val_test]['df_atr']
+    #
+    y_pred_raw = model.predict(np_X)  # avec les poids sortie modèle
+    df_y_pred = pandas.DataFrame(numpy.argmax(y_pred_raw, axis=-1))  # avec les poids forcés à 0/1
+    df_y_pred.index = df_y_1d.index
+    #
+    acc, res_eval_result_atr, cm, pc_resultat = learn_evaluate_results.evaluate_atr(
+        df_y_pred, df_y_1d, df_atr,
+        step2.step2_params['step2_symbol_spread'], step2.step2_params['step2_ratio_coupure'])
+    print("--- results analysis for ",train_val_test)
+    print('res_eval_result_atr = ', res_eval_result_atr, '\tpc_resultat =', pc_resultat)
+    print('acc = ', acc)
+    print(cm)
+    learn_evaluate_results.cm_metrics(cm)
+    print("---")
+    #
+    result = post_learning_metrics_template.copy()
+    result['acc'] = acc
+    result['res_eval_result_atr'] = res_eval_result_atr
+    result['cm'] = cm
+    result['pc_resultat'] = pc_resultat
+    return result
+
+
 def learn_from_step3(step3_params, _model_manager, loops_count=1):
     #
-    npy_path = arbo.get_study_dir(py_dir, _dataset_name) + _dir_npy
-    idx_run_loop = learn_history.new_npy_idx(npy_path)
+    idx_run_loop = learn_history.new_npy_idx(_dataset_name, _dir_npy)
     #
     try:
         learning_data = create_step3_data(step3_params)
@@ -216,16 +264,10 @@ def learn_from_step3(step3_params, _model_manager, loops_count=1):
             print("model.count_params()=", model.count_params())
             print("train_params : ", train_params)
         #
-        callback = keras.callbacks.EarlyStopping(monitor='val_accuracy',
-                                                 patience=_mm_dict['fit_earlystopping_patience'],
-                                                 restore_best_weights=True)
-        history = model.fit(learning_data['train']['np_X'],
-                            learning_data['train']['df_y_Nd'],
-                            _mm_dict['fit_batch_size'],
-                            shuffle=False,
-                            _mm_dict['fit_epochs_max'],
-                            callbacks=[callback],
-                            verbose=1,
+        callback = keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=model_fit_earlystopping_patience, restore_best_weights=True)
+        history = model.fit(learning_data['train']['np_X'], learning_data['train']['df_y_Nd'],
+                            model_fit_batch_size, shuffle=False, epochs=model_fit_epochs_max,
+                            callbacks=[callback], verbose=1,
                             validation_data=(learning_data['val']['np_X'], learning_data['val']['df_y_Nd']))
         #
         train_loss = round(min(history.history['loss']), 3)
@@ -238,19 +280,29 @@ def learn_from_step3(step3_params, _model_manager, loops_count=1):
         print("val_accuracy   = ", val_accuracy)
         print("---")
         #
-        post_learning_metrics_val   = learn_evaluate_results.post_learning_metrics(model, learning_data, 'val')
-        post_learning_metrics_test1 = learn_evaluate_results.post_learning_metrics(model, learning_data, 'test1')
-        post_learning_metrics_test2 = learn_evaluate_results.post_learning_metrics(model, learning_data, 'test2')
+        post_learning_metrics_val   = post_learning_metrics(model, learning_data, 'val')
+        post_learning_metrics_test1 = post_learning_metrics(model, learning_data, 'test1')
+        post_learning_metrics_test2 = post_learning_metrics(model, learning_data, 'test2')
         #
-        npy_path_prefix = arbo.get_study_dir(py_dir, _dataset_name) + _dir_npy + '\\' + str(idx_run_loop)
+        model_manager.save(_dataset_name, _dir_npy, idx_run_loop)
+        step2.step2_save(_dataset_name, _dir_npy, idx_run_loop, step2.step2_params)
+        step3.step3_save(_dataset_name, _dir_npy, idx_run_loop, step3_params)
+        post_learning_metrics_template_save(_dataset_name, _dir_npy, idx_run_loop, post_learning_metrics_val, 'val')
+        post_learning_metrics_template_save(_dataset_name, _dir_npy, idx_run_loop, post_learning_metrics_test1, 'train1')
+        post_learning_metrics_template_save(_dataset_name, _dir_npy, idx_run_loop, post_learning_metrics_test2, 'train2')
         #
-        _model_manager.save(npy_path_prefix)
-        utils.dictionary_save(npy_path_prefix, step2.step2_params)
-        utils.dictionary_save(npy_path_prefix, step3.step3_params)
-        utils.dictionary_save(npy_path_prefix, post_learning_metrics_val,'val')
-        utils.dictionary_save(npy_path_prefix, post_learning_metrics_test1,'test1')
-        utils.dictionary_save(npy_path_prefix, post_learning_metrics_test2,'test2')
-        #
+        learn_history.run_loop_historize(_dataset_name,
+                                         _dir_npy,
+                                         idx_run_loop,
+                                         #
+                                         model_fit_batch_size,
+                                         model_fit_epochs_max,
+                                         model_fit_earlystopping_patience,
+                                         #
+                                         train_loss,
+                                         val_loss,
+                                         train_accuracy,
+                                         val_accuracy)
         idx_run_loop += 1
         #
         del model
@@ -262,7 +314,7 @@ def learn_from_step3(step3_params, _model_manager, loops_count=1):
 #
 def execute():
     #
-    _model_manager = cmodel_manager()
+    _model_manager = model_manager()
     #
     # step3 parameters : unchanged during loop
     #
@@ -293,9 +345,11 @@ def execute():
             _mm_dict['dropout_rate'] = 0.5
             _mm_dict['optimizer_name'] = 'adam'
             _mm_dict['optimizer_modif_learning_rate'] = 0.75
-            _mm_dict['fit_batch_size'] = 32
-            _mm_dict['fit_epochs_max'] = 500
-            _mm_dict['fit_earlystopping_patience']= 100
+            #
+            # learning parameters (fit) TODO
+            model_fit_batch_size = 32
+            model_fit_epochs_max = 500
+            model_fit_earlystopping_patience = 100
             #
             _model_manager.update_properties(_mm_dict)
             #
