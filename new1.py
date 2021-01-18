@@ -4,11 +4,16 @@
 
 import os
 import sys
+import pandas
+import numpy
+import sklearn
+from sklearn.utils import shuffle
 import keras
+
 
 cur_dir = os.getcwd()
 if cur_dir == 'C:\\Users\\T0042310\\MyApp\\miniconda3':
-    sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\TF')
+    sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\pythonProject\\test-master')
     py_dir = 'C:\\Users\\T0042310\\Documents\\Perso\\Py'
 else:
     sys.path.append('E:\\Py\\pythonProject')
@@ -18,13 +23,8 @@ else:
     py_dir = 'E:\\Py'
 
 
-import pandas
-import numpy
-
-import sklearn
-from sklearn.utils import shuffle
-
 import arbo
+
 
 # -----------------------------------------------------------------------------
 # 1_dataset_prepare_raw_data
@@ -92,12 +92,6 @@ import model_manager
 from model_manager import model_manager
 
 import learn_history
-
-# learning history
-_dir_npy = '\\npy_current'
-
-learning_data_base_template = { 'np_X' : None, 'df_y_Nd' : None, 'df_y_1d' : None, 'df_atr' : None }
-learning_data_template = { 'train' : None, 'val' : None, 'test1' : None, 'test2' : None }
 
 
 def create_step3_data(step3_params):
@@ -172,25 +166,6 @@ def create_step3_data(step3_params):
     return learning_data
 
 
-post_learning_metrics_template = { 'acc' : None, 'res_eval_result_atr' : None, 'cm' : None, 'pc_resultat' : None }
-
-
-def post_learning_metrics_template_save(  # global parameters
-               dataset_name,
-               dir_npy,
-               idx_run_loop,
-               params_dict, train_val_test):
-    #
-    path = arbo.get_study_dir(py_dir, dataset_name) + dir_npy + '\\' + str(idx_run_loop)
-    #
-    # for key       in params_dict.keys():
-    # for key_value in params_dict.values():
-    for key, key_value in params_dict.items():
-        tmp = []
-        tmp.append(key_value)
-        numpy.save(path + '_hist_' + key + '_' + train_val_test + '.npy',  tmp)
-
-
 
 def post_learning_metrics(model, learning_data, train_val_test):
     #
@@ -220,7 +195,7 @@ def post_learning_metrics(model, learning_data, train_val_test):
     return result
 
 
-def learn_from_step3(step3_params, _model_manager, loops_count=1):
+def learn_from_step3(step3_params, _modelManager, loops_count=1):
     #
     idx_run_loop = learn_history.new_npy_idx(_dataset_name, _dir_npy)
     #
@@ -241,14 +216,14 @@ def learn_from_step3(step3_params, _model_manager, loops_count=1):
     print("output_shape=", output_shape)
     print("train_params=", train_params)
     #
-    _mm_dict = _model_manager.get_properties()
+    _mm_dict = _modelManager.get_properties()
     #
     _mm_dict['input_features'] = input_features
     _mm_dict['input_timesteps'] = input_timesteps
     _mm_dict['output_shape'] = output_shape
     _mm_dict['train_params'] = train_params
     #
-    _model_manager.update_properties(_mm_dict)
+    _modelManager.update_properties(_mm_dict)
     #
     for i in range(0, loops_count):
         print("")
@@ -257,18 +232,25 @@ def learn_from_step3(step3_params, _model_manager, loops_count=1):
         print("-----------------------------------------------------------")
         print("")
         #
-        model = _model_manager.create_compile_model()
+        model = _modelManager.create_compile_model()
         #
         if (i == 0):  # affiché uniquement au premier passage pour désaturer l'affichage
             print(model.summary())
             print("model.count_params()=", model.count_params())
             print("train_params : ", train_params)
         #
-        callback = keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=model_fit_earlystopping_patience, restore_best_weights=True)
-        history = model.fit(learning_data['train']['np_X'], learning_data['train']['df_y_Nd'],
-                            model_fit_batch_size, shuffle=False, epochs=model_fit_epochs_max,
-                            callbacks=[callback], verbose=1,
-                            validation_data=(learning_data['val']['np_X'], learning_data['val']['df_y_Nd']))
+        callback = keras.callbacks.EarlyStopping(monitor='val_accuracy',
+                                                 patience=_mm_dict['fit_earlystopping_patience'],
+                                                 restore_best_weights=True)
+        history = model.fit(learning_data['train']['np_X'],
+                            learning_data['train']['df_y_Nd'],
+                            _mm_dict['fit_batch_size'],
+                            shuffle=False,
+                            epochs=_mm_dict['fit_epochs_max'],
+                            callbacks=[callback],
+                            verbose=1,
+                            validation_data=(learning_data['val']['np_X'],
+                                             learning_data['val']['df_y_Nd']))
         #
         train_loss = round(min(history.history['loss']), 3)
         val_loss = round(min(history.history['val_loss']), 3)
@@ -284,25 +266,15 @@ def learn_from_step3(step3_params, _model_manager, loops_count=1):
         post_learning_metrics_test1 = post_learning_metrics(model, learning_data, 'test1')
         post_learning_metrics_test2 = post_learning_metrics(model, learning_data, 'test2')
         #
-        model_manager.save(_dataset_name, _dir_npy, idx_run_loop)
-        step2.step2_save(_dataset_name, _dir_npy, idx_run_loop, step2.step2_params)
-        step3.step3_save(_dataset_name, _dir_npy, idx_run_loop, step3_params)
-        post_learning_metrics_template_save(_dataset_name, _dir_npy, idx_run_loop, post_learning_metrics_val, 'val')
-        post_learning_metrics_template_save(_dataset_name, _dir_npy, idx_run_loop, post_learning_metrics_test1, 'train1')
-        post_learning_metrics_template_save(_dataset_name, _dir_npy, idx_run_loop, post_learning_metrics_test2, 'train2')
+        path = npy_path_with_prefix(dataset_name, dir_npy, idx_run_loop)
         #
-        learn_history.run_loop_historize(_dataset_name,
-                                         _dir_npy,
-                                         idx_run_loop,
-                                         #
-                                         model_fit_batch_size,
-                                         model_fit_epochs_max,
-                                         model_fit_earlystopping_patience,
-                                         #
-                                         train_loss,
-                                         val_loss,
-                                         train_accuracy,
-                                         val_accuracy)
+        dictionary_save(path, model_manager.get_properties())
+        dictionary_save(path, step2.step2_params)
+        dictionary_save(path, step3.step3_params)
+        dictionary_save(path, post_learning_metrics_val,   'val')
+        dictionary_save(path, post_learning_metrics_test1, 'train1')
+        dictionary_save(path, post_learning_metrics_test2, 'train2')
+        #
         idx_run_loop += 1
         #
         del model
@@ -314,7 +286,7 @@ def learn_from_step3(step3_params, _model_manager, loops_count=1):
 #
 def execute():
     #
-    _model_manager = model_manager()
+    _modelManager = ModelManager()
     #
     # step3 parameters : unchanged during loop
     #
@@ -336,7 +308,7 @@ def execute():
             #
             # Model and learning parameters : unchanged during loop
             #
-            _mm_dict = _model_manager.get_properties()
+            _mm_dict = _modelManager.get_properties()
             #
             _mm_dict['model_architecture'] = 'Conv1D_Dense'
             _mm_dict['conv1D_block1_MaxPooling1D_pool_size'] = 2
@@ -351,19 +323,19 @@ def execute():
             model_fit_epochs_max = 500
             model_fit_earlystopping_patience = 100
             #
-            _model_manager.update_properties(_mm_dict)
+            _modelManager.update_properties(_mm_dict)
             #
             for conv1D_block1_filters in (55,89,144,233,377,610,987):
                 for conv1D_block1_kernel_size in (2,3,5):
                     #
                     # Model and learning parameters : modified by this loop
                     #
-                    _mm_dict = _model_manager.get_properties()
+                    _mm_dict = _modelManager.get_properties()
                     #
                     _mm_dict['conv1D_block1_filters'] = conv1D_block1_filters
                     _mm_dict['conv1D_block1_kernel_size'] = conv1D_block1_kernel_size
                     #
-                    _model_manager.update_properties(_mm_dict)
+                    _modelManager.update_properties(_mm_dict)
                     #
-                    learn_from_step3(step3.step3_params, _model_manager)
+                    learn_from_step3(step3.step3_params, _modelManager)
 

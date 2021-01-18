@@ -15,7 +15,7 @@ from sklearn.metrics import confusion_matrix
 
 cur_dir = os.getcwd()
 if cur_dir == 'C:\\Users\\T0042310\\MyApp\\miniconda3':
-    sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\TF')
+    sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\pythonProject\\test-master')
     py_dir = 'C:\\Users\\T0042310\\Documents\\Perso\\Py'
 elif cur_dir == 'C:\\Users\\Frédéri\\PycharmProjects\\pythonProject':
     py_dir = 'C:\\Users\\Frédéri\\Py'
@@ -34,6 +34,37 @@ import step2_dataset_prepare_target_data as step2
 learning_metrics_template = { 'train_loss' : None, 'val_loss' : None, 'train_accuracy' : None, 'val_accuracy' : None }
 
 post_learning_metrics_template = { 'acc' : None, 'res_eval_result_atr' : None, 'cm' : None, 'pc_resultat' : None }
+
+obsolete_metrics_for_backward_compatibility = {
+    'model_dropout_rate' : None,
+    'model_fit_batch_size' : None,
+    'model_fit_earlystopping_patience' : None,
+    'model_fit_epochs_max' : None,
+    'optimizer_modif_learning_rate' : None,
+    'test1_acc' : None,
+    'test2_acc' : None,
+    'val_acc' : None,
+    'create_model_algo' : None,
+    'batch_size' : None,
+    'dropout' : None,
+    'layer_size' : None,
+    'layers_count' : None,
+    'factor' : None,
+    'config_Conv1D' : None,
+    'conv1D_filters' : None,
+    'conv1D_kernel_size' : None,
+    'conv1D_block2_filters' : None,
+    'conv1D_block2_kernel_size' : None,
+    'conv1D_block2_GlobalAveragePooling1D' : None,
+    'config_LSTM' : None,
+    'config_Dense' : None,
+    'acc' : None,
+    'loss' : None,
+    'epochs_sum' : None,
+    'cm' : None,
+    'result' : None,
+    'res_eval_result_atr' : None,
+    'step3_columns' : None }
 
 
 def post_learning_metrics(model, learning_data, train_val_test):

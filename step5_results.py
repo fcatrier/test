@@ -1,3 +1,7 @@
+#
+# Copyright (c) 2020-2021 by Frederi CATRIER - All rights reserved.
+#
+
 python
 
 # -----------------------------------------------------------------------------
@@ -10,9 +14,10 @@ python
 import os
 import sys
 
+
 cur_dir = os.getcwd()
 if cur_dir == 'C:\\Users\\T0042310\\MyApp\\miniconda3':
-    sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\TF')
+    sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\pythonProject\\test-master')
     py_dir = 'C:\\Users\\T0042310\\Documents\\Perso\\Py'
 elif cur_dir == 'C:\\Users\\Frédéri\\PycharmProjects\\pythonProject':
     py_dir = 'C:\\Users\\Frédéri\\Py'

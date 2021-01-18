@@ -14,7 +14,7 @@ import numpy
 
 cur_dir = os.getcwd()
 if cur_dir == 'C:\\Users\\T0042310\\MyApp\\miniconda3':
-    sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\TF')
+    sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\pythonProject\\test-master')
     py_dir = 'C:\\Users\\T0042310\\Documents\\Perso\\Py'
 elif cur_dir == 'C:\\Users\\Frédéri\\PycharmProjects\\pythonProject':
     py_dir = 'C:\\Users\\Frédéri\\Py'
@@ -28,7 +28,7 @@ else:
 
 import step2_dataset_prepare_target_data as step2
 import step3_dataset_prepare_learning_input_data as step3
-from model_manager import cmodel_manager
+from model_manager import ModelManager
 import learn_evaluate_results
 import utils
 
@@ -56,8 +56,8 @@ def get_all_params():
     for param in step3.get_param_list():
         all_params.append(param)
     #
-    _model_manager = cmodel_manager()
-    for param in _model_manager.get_param_list():
+    _modelManager = ModelManager()
+    for param in utils.dict_get_param_list(_modelManager.get_properties()):
         all_params.append(param)
     #
     for metric in utils.dict_get_param_list(learn_evaluate_results.learning_metrics_template):
@@ -69,6 +69,9 @@ def get_all_params():
             current += '_'
             current += postfix
             all_params.append(current)
+    #
+    for obsolete_metrics in utils.dict_get_param_list(learn_evaluate_results.obsolete_metrics_for_backward_compatibility):
+        all_params.append(obsolete_metrics)
     #
     return all_params
 
@@ -94,9 +97,13 @@ def npy_results(npy_path, start_idx=0):
     print(df.columns)
     print(df.head())
     try:
-        df = df.sort_values(by=['val_accuracy'], ascending=False)
+        #df = df.sort_values(by=['val_accuracy'], ascending=False)
         df.to_excel(npy_path + '\\' + 'df_results.xlsx')
-    except:
+    except Exception as exc:
+        print("exception de type ", exc.__class__)
+        # affiche exception de type  exceptions.ZeroDivisionError
+        print("message", exc)
+        # affiche le message associé à l'exception
         pass
     #
     return df

@@ -4,10 +4,12 @@
 
 import os
 import sys
+import numpy
+
 
 cur_dir = os.getcwd()
 if cur_dir == 'C:\\Users\\T0042310\\MyApp\\miniconda3':
-    sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\TF')
+    sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\pythonProject\\test-master')
     py_dir = 'C:\\Users\\T0042310\\Documents\\Perso\\Py'
 elif cur_dir == 'C:\\Users\\Frédéri\\PycharmProjects\\pythonProject':
     py_dir = 'C:\\Users\\Frédéri\\Py'
@@ -18,15 +20,11 @@ else:
     sys.path.append('C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v10.1\\bin')
     py_dir = 'E:\\Py'
 
+
 import arbo
 
-import keras
-from keras.layers import Dropout
-from keras.layers.convolutional import Conv1D, MaxPooling1D
-import numpy
 
-
-class cmodel_manager:
+class ModelManager:
     #
     __model_dict = dict ([
         #
@@ -67,6 +65,10 @@ class cmodel_manager:
     #
     def __create_model_Dense_Dense(self):
         #
+        import keras
+        from keras.layers import Dropout
+        from keras.layers.convolutional import Conv1D, MaxPooling1D
+        #
         model = keras.Sequential()
         #
         # entrée du modèle
@@ -86,6 +88,10 @@ class cmodel_manager:
         return model
     #
     def __create_model_LSTM_Dense(self):
+        #
+        import keras
+        from keras.layers import Dropout
+        from keras.layers.convolutional import Conv1D, MaxPooling1D
         #
         model = keras.Sequential()
         #
@@ -111,6 +117,10 @@ class cmodel_manager:
     #
     def __create_model_Conv1D_Dense(self):
         #
+        import keras
+        from keras.layers import Dropout
+        from keras.layers.convolutional import Conv1D, MaxPooling1D
+        #        #
         model = keras.Sequential()
         #
         model.add(Conv1D(filters=self.__model_dict['conv1D_block1_filters'],
@@ -138,6 +148,11 @@ class cmodel_manager:
         return model
     #
     def __create_optimizer(self):
+        #
+        import keras
+        from keras.layers import Dropout
+        from keras.layers.convolutional import Conv1D, MaxPooling1D
+        #
         if self.__model_dict['optimizer_name'] == 'sgd':  # sgd
             learning_rate = 0.01 * self.__model_dict['optimizer_modif_learning_rate']
             return keras.optimizers.SGD(learning_rate)
@@ -149,6 +164,10 @@ class cmodel_manager:
     #
     def create_compile_model(self):
         #
+        import keras
+        from keras.layers import Dropout
+        from keras.layers.convolutional import Conv1D, MaxPooling1D
+        #        #
         model = None
         if self.__model_dict['model_architecture'] == 'Conv1D_Dense':
             model = self.__create_model_Conv1D_Dense()
@@ -186,17 +205,3 @@ class cmodel_manager:
     #     train_accuracy = round(max(history.history['accuracy']), 2)
     #     val_accuracy = round(max(history.history['val_accuracy']), 2)
     #
-    def save(self, npy_path_prefix):
-        #
-        # for key       in params_dict.keys():
-        # for key_value in params_dict.values():
-        for key, key_value in self.__model_dict.items():
-            tmp = []
-            tmp.append(key_value)
-            numpy.save(npy_path_prefix + '_hist_' + key + '.npy',  tmp)
-    #
-    def get_param_list(self):
-        param_list = []
-        for key, key_value in self.__model_dict.items():
-            param_list.append(key)
-        return param_list

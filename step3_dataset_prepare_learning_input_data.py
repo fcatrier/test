@@ -1,4 +1,8 @@
 #
+# Copyright (c) 2020-2021 by Frederi CATRIER - All rights reserved.
+#
+
+#
 # TODO
 #
 #  6 - ajouter informations (voir données dans XL Cockpit)
@@ -7,14 +11,97 @@
 #                      - xMA
 #
 
+
+"""
+
+
+
+
+interface à minima
+
+train_data, target_data
+
+
+conventions (usuelles dans les samples et les codes sur le Web)
+    X = données d'apprentissage (X majuscule)
+    y = données cible (y minuscule)
+
+conventions Frédéri
+    préfixe np = numpy.array
+    préfixe df = pandas.dataframe
+
+
+np_learn_X, df_y_Nd, df_y_1d
+
+
+supposons que l'on ait défini un jeu d'apprentissage simple :
+
+date    close       target
+
+
+alors à minima
+    X = close
+    y = target
+
+mais pour les LSTM/GRU et Conv1D on a besoin de données d'apprentissage sous la forme 
+d'un historique de X pour chaque y
+
+         |-   (X0,X1,X2)      y0
+n        |
+samples  |    (X1,X2,X3)      y1
+         |    ...
+         |-   (Xn,Xn+1,Xn+2)  Yn
+
+illustration pour un exemple un peu plus complexe :
+
+données = date, O, H, L, C, rsi14, target
+
+alors
+
+X = O, H, L, C, rsi14
+y = target
+
+une fois formaté pour LSTM/GRU ou Conv1D :
+
+( (O_0, H_0, L_0, C_0, rsi14_0),
+  (O_1, H_1, L_1, C_1, rsi14_1),
+  (O_2, H_2, L_2, C_2, rsi14_2) )       y0
+
+( (O_1, H_1, L_1, C_1, rsi14_1),
+  (O_2, H_2, L_2, C_2, rsi14_2),
+  (O_3, H_3, L_3, C_3, rsi14_3) )       y1
+
+...
+
+=> c'est pour cela que j'utilise un tableau numpy pour les X.
+
+sa dimension est :
+
+profondeur            ( (nombre de colonnes),
+d'historique            (nombre de colonnes),
+injecté pour 1 sample   (nombre de colonnes),
+4 ici par exp.          (nombre de colonnes) )       y0
+
+
+
+
+
+
+"""
+
 # python
 
 import os
 import sys
+import pandas
+import numpy
+from sklearn.utils import shuffle
+from sklearn.preprocessing import MinMaxScaler
+
 
 cur_dir = os.getcwd()
 if cur_dir == 'C:\\Users\\T0042310\\MyApp\\miniconda3':
-    sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\TF')
+    sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\pythonProject\\test-master')
     py_dir = 'C:\\Users\\T0042310\\Documents\\Perso\\Py'
 elif cur_dir == 'C:\\Users\\Frédéri\\PycharmProjects\\pythonProject':
     py_dir = 'C:\\Users\\Frédéri\\Py'
@@ -28,11 +115,6 @@ else:
 
 import arbo
 import step2_dataset_prepare_target_data as step2
-
-import pandas
-import numpy
-from sklearn.utils import shuffle
-from sklearn.preprocessing import MinMaxScaler
 
 
 step3_params = {
@@ -51,53 +133,11 @@ def get_param_list():
         param_list.append(key)
     return param_list
 
-def step3_save(  # global parameters
-               dataset_name,
-               dir_npy,
-               idx_run_loop,
-               step3_params):
-    #
-    # historisation de tous les paramètres
-    #
-    hist_step3_recouvrement = []
-    hist_step3_samples_by_class = []
-    hist_step3_tests_by_class = []
-    hist_step3_time_depth = []
-    hist_step3_columns_names_to_scale = []
-    hist_step3_columns_names_not_to_scale = []
-    #
-    hist_step3_recouvrement.append(step3_params['step3_recouvrement'])
-    hist_step3_samples_by_class.append(step3_params['step3_samples_by_class'])
-    hist_step3_tests_by_class.append(step3_params['step3_tests_by_class'])
-    hist_step3_time_depth.append(step3_params['step3_time_depth'])
-    hist_step3_columns_names_to_scale.append(list_to_str(step3_params['step3_column_names_to_scale'], ','))
-    hist_step3_columns_names_not_to_scale.append(list_to_str(step3_params['step3_column_names_not_to_scale'], ','))
-    #
-    path = arbo.get_study_dir(py_dir, dataset_name) + dir_npy + '\\' + str(idx_run_loop)
-    #
-    numpy.save(path + '_hist_step3_recouvrement.npy',           hist_step3_recouvrement)
-    numpy.save(path + '_hist_step3_samples_by_class.npy',       hist_step3_samples_by_class)
-    numpy.save(path + '_hist_step3_tests_by_class.npy',         hist_step3_tests_by_class)
-    numpy.save(path + '_hist_step3_time_depth.npy',             hist_step3_time_depth)
-    numpy.save(path + '_hist_step3_columns_names_to_scale.npy',     hist_step3_columns_names_to_scale)
-    numpy.save(path + '_hist_step3_columns_names_not_to_scale.npy', hist_step3_columns_names_not_to_scale)
-
 
 # -----------------------------------------------------------------------------
 # Définition des fonctions
 # -----------------------------------------------------------------------------
 
-def list_to_str(collection,separator):
-   list_elements = ''
-   first = True
-   for element in collection:
-      if(first==True):
-         list_elements += str(element)
-         first = False
-      else:
-         list_elements += separator
-         list_elements += str(element)
-   return list_elements
 
 
 def generate_learning_data_dynamic_scale_column(df,column):
@@ -107,262 +147,6 @@ def generate_learning_data_dynamic_scale_column(df,column):
    reshaped=scaler.transform(toReshape)
    df[column] = reshaped
    return df
-
-
-def generate_learning_data_dynamic(big_for_target, recouvrement, samples_by_class, time_depth, column_names_to_scale, column_names_not_to_scale):
-   #
-   np_learn_X_arr = []
-   target_arr     = []
-   date_index_arr = []
-   #
-   target1_count = 0
-   target2_count = 0
-   target3_count = 0
-   #
-   column_names = []
-   for col in column_names_to_scale:
-      column_names.append(col)
-   #
-   for col in column_names_not_to_scale:
-      column_names.append(col)
-   #
-   column_names.append('target_class')
-   #
-   dfTarget = big_for_target.copy()
-   dfTarget = dfTarget.sort_index(ascending=False)
-   #
-   idx = time_depth
-   idx_max = len(dfTarget)-1
-   step = time_depth // recouvrement
-   max_records = (idx_max-idx) // step
-   approximate_max_samples_by_class = max_records // 3
-   if(approximate_max_samples_by_class<=samples_by_class):
-      print("approximate_max_samples_by_class<=samples_by_class, approximate_max_samples_by_class=",approximate_max_samples_by_class)
-      return False, 0,0,0
-   #
-   # !!! : à partir d'ici on est avec indice 0 = le plus récent et idx_max = le plus ancien
-   #
-   while( (idx <= idx_max) &
-          ( (target1_count<samples_by_class) or
-            (target2_count<samples_by_class) or
-            (target3_count<samples_by_class) ) ):
-      #
-      dfExtract = dfTarget[column_names][idx-time_depth:idx]
-      target = dfExtract['target_class'][0]
-      date_index_arr.append(dfExtract.index[0])
-      #
-      if( ((target==1) & (target1_count<samples_by_class)) or
-          ((target==2) & (target2_count<samples_by_class)) or
-          ((target==3) & (target3_count<samples_by_class)) ):
-         #
-         # rescaling sur l'intervalle des colonnes le nécessitant
-         #
-         for col in column_names_to_scale:
-            dfExtract = generate_learning_data_dynamic_scale_column(dfExtract,col)
-         #
-         # mémorisation avant suppression de la colonne 'target_class' (pour debug)
-         #input_df_arr.append(dfExtract)
-         #
-         target = dfExtract['target_class'][0]
-         dfExtract = dfExtract.drop(['target_class'],axis=1)
-         np_learn_X_arr.append(numpy.array(dfExtract))
-         #
-         target_arr.append(target)
-         if(target==1):
-            target1_count += 1
-         elif(target==2):
-            target2_count += 1
-         elif(target==3):
-            target3_count += 1
-         else:
-            print("!!!")
-      #
-      idx += ( time_depth // recouvrement )
-   #
-   print("target1 : ",target1_count,"(",round(target1_count/(target1_count+target2_count+target3_count),2),"%)",
-         "target2 : ",target2_count,"(",round(target2_count/(target1_count+target2_count+target3_count),2),"%)",
-         "target3 : ",target3_count,"(",round(target3_count/(target1_count+target2_count+target3_count),2),"%)")
-   #
-   np_learn_X    = numpy.array(np_learn_X_arr)
-   df_y_1d       = pandas.DataFrame(target_arr)
-   df_date_index = pandas.DataFrame(date_index_arr)
-   #
-   df_y_Nd = pandas.DataFrame()
-   for col_value in range(df_y_1d[0].min(),df_y_1d[0].max()+1):
-      df_y_Nd[col_value]=1*(df_y_1d[0]==col_value)
-   #
-   # remise des dates en tant qu'index (pour faciliter le debug et les échanges/tests avec MT5)
-   #
-   df_y_1d['DateTime_tmp_idx']=df_date_index
-   df_y_1d.index=df_y_1d['DateTime_tmp_idx']
-   df_y_1d = df_y_1d.drop(['DateTime_tmp_idx' ],axis=1)
-   #
-   df_y_Nd['DateTime_tmp_idx']=df_date_index
-   df_y_Nd.index=df_y_Nd['DateTime_tmp_idx']
-   df_y_Nd = df_y_Nd.drop(['DateTime_tmp_idx' ],axis=1)
-   #
-   return True, np_learn_X, df_y_Nd, df_y_1d
-
-
-
-def generate_learning_data_dynamic2(big_for_target, idx_start, recouvrement, samples_by_class, tests_by_class, time_depth, column_names_to_scale, column_names_not_to_scale):
-   #
-   np_X_arr_test            = []
-   np_X_arr_train_val       = []
-   target_arr_test          = []
-   target_arr_train_val     = []
-   date_index_arr_test      = []
-   date_index_arr_train_val = []
-   atr_arr_test             = []
-   #
-   target1_count = 0
-   target2_count = 0
-   target3_count = 0
-   #
-   target1_test_count = 0
-   target2_test_count = 0
-   target3_test_count = 0
-   #
-   column_names = []
-   for col in column_names_to_scale:
-      column_names.append(col)
-   #
-   for col in column_names_not_to_scale:
-      column_names.append(col)
-   #
-   column_names.append('target_class')
-   column_names.append('UsaInd_M15_ATR_13')
-   #
-   dfTarget = big_for_target.copy()
-   dfTarget = dfTarget.sort_index(ascending=False)
-   #
-   idx = time_depth + idx_start
-   idx_max = len(dfTarget)-1
-   step = time_depth // recouvrement
-   print("idx_step=",step)
-   max_records = (idx_max-idx) // step
-   approximate_max_samples_by_class = max_records // 3
-   if(approximate_max_samples_by_class<=samples_by_class):
-      print("approximate_max_samples_by_class<=samples_by_class, approximate_max_samples_by_class=",approximate_max_samples_by_class)
-      return False, 0,0,0
-   #
-   # !!! : à partir d'ici on est avec indice 0 = le plus récent et idx_max = le plus ancien
-   #
-   while( (idx <= idx_max) &
-          ( (target1_count<samples_by_class) or
-            (target2_count<samples_by_class) or
-            (target3_count<samples_by_class) ) ):
-      #
-      dfExtract = dfTarget[column_names][idx-time_depth:idx]
-      target = dfExtract['target_class'][0]
-      #
-      if( ((target==1) & (target1_count<samples_by_class)) or
-          ((target==2) & (target2_count<samples_by_class)) or
-          ((target==3) & (target3_count<samples_by_class)) ):
-         #
-         # rescaling sur l'intervalle des colonnes le nécessitant
-         #
-         for col in column_names_to_scale:
-            dfExtract = generate_learning_data_dynamic_scale_column(dfExtract,col)
-         #
-         # mémorisation avant suppression de la colonne 'target_class' (pour debug)
-         #input_df_arr.append(dfExtract)
-         #
-         target = dfExtract['target_class'     ][0]
-         dt     = dfExtract.index[0]
-         atr    = dfExtract['UsaInd_M15_ATR_13'][0]
-         dfExtract = dfExtract.drop(['target_class'],axis=1)
-         #
-         if( (target==1) & (target1_test_count<tests_by_class) ):
-            np_X_arr_test.append(numpy.array(dfExtract))
-            target_arr_test.append(target)
-            date_index_arr_test.append(dt)
-            atr_arr_test.append(atr)
-            #
-            target1_test_count += 1
-            target1_count += 1
-         elif( (target==2) & (target2_test_count<tests_by_class) ):
-            np_X_arr_test.append(numpy.array(dfExtract))
-            target_arr_test.append(target)
-            date_index_arr_test.append(dt)
-            atr_arr_test.append(atr)
-            #
-            target2_test_count += 1
-            target2_count += 1
-         elif( (target==3) & (target3_test_count<tests_by_class) ):
-            np_X_arr_test.append(numpy.array(dfExtract))
-            target_arr_test.append(target)
-            date_index_arr_test.append(dt)
-            atr_arr_test.append(atr)
-            #
-            target3_test_count += 1
-            target3_count += 1
-         else:
-            np_X_arr_train_val.append(numpy.array(dfExtract))
-            target_arr_train_val.append(target)
-            date_index_arr_train_val.append(dt)
-            #
-            if(target==1):
-               target1_count += 1
-            elif(target==2):
-               target2_count += 1
-            elif(target==3):
-               target3_count += 1
-            else:
-               print("!!!")
-      #
-      idx += ( time_depth // recouvrement )
-   #
-   print("target1 : ",target1_count,"(",round(target1_count/(target1_count+target2_count+target3_count),2),"%)",
-         "target2 : ",target2_count,"(",round(target2_count/(target1_count+target2_count+target3_count),2),"%)",
-         "target3 : ",target3_count,"(",round(target3_count/(target1_count+target2_count+target3_count),2),"%)")
-   #
-   np_X_test      = numpy.array(np_X_arr_test)
-   np_X_train_val = numpy.array(np_X_arr_train_val)
-   #
-   df_y_1d_test       = pandas.DataFrame(target_arr_test)
-   df_y_1d_train_val  = pandas.DataFrame(target_arr_train_val)
-   #
-   df_date_index_test      = pandas.DataFrame(date_index_arr_test)
-   df_atr_test             = pandas.DataFrame(atr_arr_test)
-   df_date_index_train_val = pandas.DataFrame(date_index_arr_train_val)
-   #
-   df_y_Nd_test = pandas.DataFrame()
-   for col_value in range(df_y_1d_test[0].min(),df_y_1d_test[0].max()+1):
-      df_y_Nd_test[col_value]=1*(df_y_1d_test[0]==col_value)
-   #
-   df_y_Nd_train_val = pandas.DataFrame()
-   for col_value in range(df_y_1d_train_val[0].min(),df_y_1d_train_val[0].max()+1):
-      df_y_Nd_train_val[col_value]=1*(df_y_1d_train_val[0]==col_value)
-   #
-   # remise des dates en tant qu'index (pour faciliter le debug et les échanges/tests avec MT5)
-   #
-   df_y_1d_test['DateTime_tmp_idx']=df_date_index_test
-   df_y_1d_test.index=df_y_1d_test['DateTime_tmp_idx']
-   df_y_1d_test = df_y_1d_test.drop(['DateTime_tmp_idx' ],axis=1)
-   #
-   df_atr_test['DateTime_tmp_idx']=df_date_index_test
-   df_atr_test.index=df_atr_test['DateTime_tmp_idx']
-   df_atr_test = df_atr_test.drop(['DateTime_tmp_idx' ],axis=1)
-   #
-   df_y_1d_train_val['DateTime_tmp_idx']=df_date_index_train_val
-   df_y_1d_train_val.index=df_y_1d_train_val['DateTime_tmp_idx']
-   df_y_1d_train_val = df_y_1d_train_val.drop(['DateTime_tmp_idx' ],axis=1)
-   #
-   df_y_Nd_test['DateTime_tmp_idx']=df_date_index_test
-   df_y_Nd_test.index=df_y_Nd_test['DateTime_tmp_idx']
-   df_y_Nd_test = df_y_Nd_test.drop(['DateTime_tmp_idx' ],axis=1)
-   #
-   df_y_Nd_train_val['DateTime_tmp_idx']=df_date_index_train_val
-   df_y_Nd_train_val.index=df_y_Nd_train_val['DateTime_tmp_idx']
-   df_y_Nd_train_val = df_y_Nd_train_val.drop(['DateTime_tmp_idx' ],axis=1)
-   #
-   resOK = ( (target1_count+target2_count+target3_count) == (3*samples_by_class) )
-   #
-   return resOK, np_X_test,    np_X_train_val,    \
-                 df_y_Nd_test, df_y_Nd_train_val, \
-                 df_y_1d_test, df_y_1d_train_val, \
-                 df_atr_test
 
 
 
@@ -1746,6 +1530,263 @@ def generate_LSTM(filenames_list_LSTM,dataset_name,target_period,all_df_bigs,big
 #           big = pandas.concat([copy_Usa500,copy_UsaInd,copy_UsaTec,copy_Ger30],join='inner',axis=1)
 """
 
+
+# def generate_learning_data_dynamic(big_for_target, recouvrement, samples_by_class, time_depth, column_names_to_scale, column_names_not_to_scale):
+   # #
+   # np_learn_X_arr = []
+   # target_arr     = []
+   # date_index_arr = []
+   # #
+   # target1_count = 0
+   # target2_count = 0
+   # target3_count = 0
+   # #
+   # column_names = []
+   # for col in column_names_to_scale:
+      # column_names.append(col)
+   # #
+   # for col in column_names_not_to_scale:
+      # column_names.append(col)
+   # #
+   # column_names.append('target_class')
+   # #
+   # dfTarget = big_for_target.copy()
+   # dfTarget = dfTarget.sort_index(ascending=False)
+   # #
+   # idx = time_depth
+   # idx_max = len(dfTarget)-1
+   # step = time_depth // recouvrement
+   # max_records = (idx_max-idx) // step
+   # approximate_max_samples_by_class = max_records // 3
+   # if(approximate_max_samples_by_class<=samples_by_class):
+      # print("approximate_max_samples_by_class<=samples_by_class, approximate_max_samples_by_class=",approximate_max_samples_by_class)
+      # return False, 0,0,0
+   # #
+   # # !!! : à partir d'ici on est avec indice 0 = le plus récent et idx_max = le plus ancien
+   # #
+   # while( (idx <= idx_max) &
+          # ( (target1_count<samples_by_class) or
+            # (target2_count<samples_by_class) or
+            # (target3_count<samples_by_class) ) ):
+      # #
+      # dfExtract = dfTarget[column_names][idx-time_depth:idx]
+      # target = dfExtract['target_class'][0]
+      # date_index_arr.append(dfExtract.index[0])
+      # #
+      # if( ((target==1) & (target1_count<samples_by_class)) or
+          # ((target==2) & (target2_count<samples_by_class)) or
+          # ((target==3) & (target3_count<samples_by_class)) ):
+         # #
+         # # rescaling sur l'intervalle des colonnes le nécessitant
+         # #
+         # for col in column_names_to_scale:
+            # dfExtract = generate_learning_data_dynamic_scale_column(dfExtract,col)
+         # #
+         # # mémorisation avant suppression de la colonne 'target_class' (pour debug)
+         # #input_df_arr.append(dfExtract)
+         # #
+         # target = dfExtract['target_class'][0]
+         # dfExtract = dfExtract.drop(['target_class'],axis=1)
+         # np_learn_X_arr.append(numpy.array(dfExtract))
+         # #
+         # target_arr.append(target)
+         # if(target==1):
+            # target1_count += 1
+         # elif(target==2):
+            # target2_count += 1
+         # elif(target==3):
+            # target3_count += 1
+         # else:
+            # print("!!!")
+      # #
+      # idx += ( time_depth // recouvrement )
+   # #
+   # print("target1 : ",target1_count,"(",round(target1_count/(target1_count+target2_count+target3_count),2),"%)",
+         # "target2 : ",target2_count,"(",round(target2_count/(target1_count+target2_count+target3_count),2),"%)",
+         # "target3 : ",target3_count,"(",round(target3_count/(target1_count+target2_count+target3_count),2),"%)")
+   # #
+   # np_learn_X    = numpy.array(np_learn_X_arr)
+   # df_y_1d       = pandas.DataFrame(target_arr)
+   # df_date_index = pandas.DataFrame(date_index_arr)
+   # #
+   # df_y_Nd = pandas.DataFrame()
+   # for col_value in range(df_y_1d[0].min(),df_y_1d[0].max()+1):
+      # df_y_Nd[col_value]=1*(df_y_1d[0]==col_value)
+   # #
+   # # remise des dates en tant qu'index (pour faciliter le debug et les échanges/tests avec MT5)
+   # #
+   # df_y_1d['DateTime_tmp_idx']=df_date_index
+   # df_y_1d.index=df_y_1d['DateTime_tmp_idx']
+   # df_y_1d = df_y_1d.drop(['DateTime_tmp_idx' ],axis=1)
+   # #
+   # df_y_Nd['DateTime_tmp_idx']=df_date_index
+   # df_y_Nd.index=df_y_Nd['DateTime_tmp_idx']
+   # df_y_Nd = df_y_Nd.drop(['DateTime_tmp_idx' ],axis=1)
+   # #
+   # return True, np_learn_X, df_y_Nd, df_y_1d
+
+
+
+# def generate_learning_data_dynamic2(big_for_target, idx_start, recouvrement, samples_by_class, tests_by_class, time_depth, column_names_to_scale, column_names_not_to_scale):
+   # #
+   # np_X_arr_test            = []
+   # np_X_arr_train_val       = []
+   # target_arr_test          = []
+   # target_arr_train_val     = []
+   # date_index_arr_test      = []
+   # date_index_arr_train_val = []
+   # atr_arr_test             = []
+   # #
+   # target1_count = 0
+   # target2_count = 0
+   # target3_count = 0
+   # #
+   # target1_test_count = 0
+   # target2_test_count = 0
+   # target3_test_count = 0
+   # #
+   # column_names = []
+   # for col in column_names_to_scale:
+      # column_names.append(col)
+   # #
+   # for col in column_names_not_to_scale:
+      # column_names.append(col)
+   # #
+   # column_names.append('target_class')
+   # column_names.append('UsaInd_M15_ATR_13')
+   # #
+   # dfTarget = big_for_target.copy()
+   # dfTarget = dfTarget.sort_index(ascending=False)
+   # #
+   # idx = time_depth + idx_start
+   # idx_max = len(dfTarget)-1
+   # step = time_depth // recouvrement
+   # print("idx_step=",step)
+   # max_records = (idx_max-idx) // step
+   # approximate_max_samples_by_class = max_records // 3
+   # if(approximate_max_samples_by_class<=samples_by_class):
+      # print("approximate_max_samples_by_class<=samples_by_class, approximate_max_samples_by_class=",approximate_max_samples_by_class)
+      # return False, 0,0,0
+   # #
+   # # !!! : à partir d'ici on est avec indice 0 = le plus récent et idx_max = le plus ancien
+   # #
+   # while( (idx <= idx_max) &
+          # ( (target1_count<samples_by_class) or
+            # (target2_count<samples_by_class) or
+            # (target3_count<samples_by_class) ) ):
+      # #
+      # dfExtract = dfTarget[column_names][idx-time_depth:idx]
+      # target = dfExtract['target_class'][0]
+      # #
+      # if( ((target==1) & (target1_count<samples_by_class)) or
+          # ((target==2) & (target2_count<samples_by_class)) or
+          # ((target==3) & (target3_count<samples_by_class)) ):
+         # #
+         # # rescaling sur l'intervalle des colonnes le nécessitant
+         # #
+         # for col in column_names_to_scale:
+            # dfExtract = generate_learning_data_dynamic_scale_column(dfExtract,col)
+         # #
+         # # mémorisation avant suppression de la colonne 'target_class' (pour debug)
+         # #input_df_arr.append(dfExtract)
+         # #
+         # target = dfExtract['target_class'     ][0]
+         # dt     = dfExtract.index[0]
+         # atr    = dfExtract['UsaInd_M15_ATR_13'][0]
+         # dfExtract = dfExtract.drop(['target_class'],axis=1)
+         # #
+         # if( (target==1) & (target1_test_count<tests_by_class) ):
+            # np_X_arr_test.append(numpy.array(dfExtract))
+            # target_arr_test.append(target)
+            # date_index_arr_test.append(dt)
+            # atr_arr_test.append(atr)
+            # #
+            # target1_test_count += 1
+            # target1_count += 1
+         # elif( (target==2) & (target2_test_count<tests_by_class) ):
+            # np_X_arr_test.append(numpy.array(dfExtract))
+            # target_arr_test.append(target)
+            # date_index_arr_test.append(dt)
+            # atr_arr_test.append(atr)
+            # #
+            # target2_test_count += 1
+            # target2_count += 1
+         # elif( (target==3) & (target3_test_count<tests_by_class) ):
+            # np_X_arr_test.append(numpy.array(dfExtract))
+            # target_arr_test.append(target)
+            # date_index_arr_test.append(dt)
+            # atr_arr_test.append(atr)
+            # #
+            # target3_test_count += 1
+            # target3_count += 1
+         # else:
+            # np_X_arr_train_val.append(numpy.array(dfExtract))
+            # target_arr_train_val.append(target)
+            # date_index_arr_train_val.append(dt)
+            # #
+            # if(target==1):
+               # target1_count += 1
+            # elif(target==2):
+               # target2_count += 1
+            # elif(target==3):
+               # target3_count += 1
+            # else:
+               # print("!!!")
+      # #
+      # idx += ( time_depth // recouvrement )
+   # #
+   # print("target1 : ",target1_count,"(",round(target1_count/(target1_count+target2_count+target3_count),2),"%)",
+         # "target2 : ",target2_count,"(",round(target2_count/(target1_count+target2_count+target3_count),2),"%)",
+         # "target3 : ",target3_count,"(",round(target3_count/(target1_count+target2_count+target3_count),2),"%)")
+   # #
+   # np_X_test      = numpy.array(np_X_arr_test)
+   # np_X_train_val = numpy.array(np_X_arr_train_val)
+   # #
+   # df_y_1d_test       = pandas.DataFrame(target_arr_test)
+   # df_y_1d_train_val  = pandas.DataFrame(target_arr_train_val)
+   # #
+   # df_date_index_test      = pandas.DataFrame(date_index_arr_test)
+   # df_atr_test             = pandas.DataFrame(atr_arr_test)
+   # df_date_index_train_val = pandas.DataFrame(date_index_arr_train_val)
+   # #
+   # df_y_Nd_test = pandas.DataFrame()
+   # for col_value in range(df_y_1d_test[0].min(),df_y_1d_test[0].max()+1):
+      # df_y_Nd_test[col_value]=1*(df_y_1d_test[0]==col_value)
+   # #
+   # df_y_Nd_train_val = pandas.DataFrame()
+   # for col_value in range(df_y_1d_train_val[0].min(),df_y_1d_train_val[0].max()+1):
+      # df_y_Nd_train_val[col_value]=1*(df_y_1d_train_val[0]==col_value)
+   # #
+   # # remise des dates en tant qu'index (pour faciliter le debug et les échanges/tests avec MT5)
+   # #
+   # df_y_1d_test['DateTime_tmp_idx']=df_date_index_test
+   # df_y_1d_test.index=df_y_1d_test['DateTime_tmp_idx']
+   # df_y_1d_test = df_y_1d_test.drop(['DateTime_tmp_idx' ],axis=1)
+   # #
+   # df_atr_test['DateTime_tmp_idx']=df_date_index_test
+   # df_atr_test.index=df_atr_test['DateTime_tmp_idx']
+   # df_atr_test = df_atr_test.drop(['DateTime_tmp_idx' ],axis=1)
+   # #
+   # df_y_1d_train_val['DateTime_tmp_idx']=df_date_index_train_val
+   # df_y_1d_train_val.index=df_y_1d_train_val['DateTime_tmp_idx']
+   # df_y_1d_train_val = df_y_1d_train_val.drop(['DateTime_tmp_idx' ],axis=1)
+   # #
+   # df_y_Nd_test['DateTime_tmp_idx']=df_date_index_test
+   # df_y_Nd_test.index=df_y_Nd_test['DateTime_tmp_idx']
+   # df_y_Nd_test = df_y_Nd_test.drop(['DateTime_tmp_idx' ],axis=1)
+   # #
+   # df_y_Nd_train_val['DateTime_tmp_idx']=df_date_index_train_val
+   # df_y_Nd_train_val.index=df_y_Nd_train_val['DateTime_tmp_idx']
+   # df_y_Nd_train_val = df_y_Nd_train_val.drop(['DateTime_tmp_idx' ],axis=1)
+   # #
+   # resOK = ( (target1_count+target2_count+target3_count) == (3*samples_by_class) )
+   # #
+   # return resOK, np_X_test,    np_X_train_val,    \
+                 # df_y_Nd_test, df_y_Nd_train_val, \
+                 # df_y_1d_test, df_y_1d_train_val, \
+                 # df_atr_test
+
+
 # # -----------------------------------------------------------------------------
 # # Scripts de génération du dfLearn
 # # -----------------------------------------------------------------------------
@@ -1860,7 +1901,7 @@ def generate_LSTM(filenames_list_LSTM,dataset_name,target_period,all_df_bigs,big
 # cur_dir=os.getcwd()
 # import sys
 # if(cur_dir=='C:\\Users\\T0042310\\MyApp\\miniconda3'):
-   # sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\TF')
+   # sys.path.append('C:\\Users\\T0042310\\Documents\\Perso\\Py\\pythonProject\\test-master')
    # py_dir='C:\\Users\\T0042310\\Documents\\Perso\\Py'
 # else:
    # sys.path.append('E:\\Py\\TF')
