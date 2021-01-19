@@ -33,9 +33,9 @@ import learn_evaluate_results
 import utils
 
 
-def new_npy_idx(npy_dir):
+def new_npy_idx(npy_path):
     idx_max = 0
-    for root, dirs, files in os.walk(npy_dir):
+    for root, dirs, files in os.walk(npy_path):
         for file in files:
             try:
                 idx = int(file.split('_')[0])

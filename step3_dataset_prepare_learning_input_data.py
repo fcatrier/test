@@ -180,7 +180,7 @@ def generate_learning_data_dynamic3(big_for_target, idx_start, recouvrement, sam
    #
    idx = time_depth + idx_start
    idx_max = len(dfTarget)-1
-   step = time_depth // recouvrement
+   step = max(1, time_depth // recouvrement)  # max ici pour éviter step = 0
    print("idx_step=",step)
    max_records = (idx_max-idx) // step
    approximate_max_samples_by_class = max_records // 3
@@ -240,7 +240,7 @@ def generate_learning_data_dynamic3(big_for_target, idx_start, recouvrement, sam
             target3_test_count += 1
             target3_count += 1
       #
-      idx += ( time_depth // recouvrement )
+      idx += step
    #
    print("target1 : ",target1_count,"(",round(target1_count/(target1_count+target2_count+target3_count),2),"%)",
          "target2 : ",target2_count,"(",round(target2_count/(target1_count+target2_count+target3_count),2),"%)",

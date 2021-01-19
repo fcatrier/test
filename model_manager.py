@@ -4,7 +4,6 @@
 
 import os
 import sys
-import numpy
 
 
 cur_dir = os.getcwd()
@@ -21,12 +20,9 @@ else:
     py_dir = 'E:\\Py'
 
 
-import arbo
-
-
 class ModelManager:
     #
-    __model_dict = dict ([
+    __model_dict = dict([
         #
         ('model_architecture', 'None'),
         #
@@ -53,21 +49,19 @@ class ModelManager:
         ('fit_epochs_max', 500),
         ('fit_earlystopping_patience', 100)
     ])
-    #
+
     def __init__(self):
         pass
-    #
+
     def get_properties(self):
         return self.__model_dict
-    #
-    def update_properties(self,model_dict):
+
+    def update_properties(self, model_dict):
         self.__model_dict = model_dict
-    #
+
     def __create_model_Dense_Dense(self):
         #
         import keras
-        from keras.layers import Dropout
-        from keras.layers.convolutional import Conv1D, MaxPooling1D
         #
         model = keras.Sequential()
         #
@@ -90,8 +84,6 @@ class ModelManager:
     def __create_model_LSTM_Dense(self):
         #
         import keras
-        from keras.layers import Dropout
-        from keras.layers.convolutional import Conv1D, MaxPooling1D
         #
         model = keras.Sequential()
         #
@@ -150,13 +142,11 @@ class ModelManager:
     def __create_optimizer(self):
         #
         import keras
-        from keras.layers import Dropout
-        from keras.layers.convolutional import Conv1D, MaxPooling1D
         #
-        if self.__model_dict['optimizer_name'] == 'sgd':  # sgd
+        if self.__model_dict['optimizer_name'] == 'sgd':
             learning_rate = 0.01 * self.__model_dict['optimizer_modif_learning_rate']
             return keras.optimizers.SGD(learning_rate)
-        elif self.__model_dict['optimizer_name'] == 'adam':  # adam
+        elif self.__model_dict['optimizer_name'] == 'adam':
             learning_rate = 0.001 * self.__model_dict['optimizer_modif_learning_rate']
             return keras.optimizers.Adam(learning_rate)
         else:
@@ -164,16 +154,12 @@ class ModelManager:
     #
     def create_compile_model(self):
         #
-        import keras
-        from keras.layers import Dropout
-        from keras.layers.convolutional import Conv1D, MaxPooling1D
-        #        #
         model = None
         if self.__model_dict['model_architecture'] == 'Conv1D_Dense':
             model = self.__create_model_Conv1D_Dense()
-        elif  self.__model_dict['model_architecture'] == 'Dense_Dense':
+        elif self.__model_dict['model_architecture'] == 'Dense_Dense':
             model = self.__create_model_Dense_Dense()
-        elif  self.__model_dict['model_architecture'] == 'LSTM_Dense':
+        elif self.__model_dict['model_architecture'] == 'LSTM_Dense':
             model = self.__create_model_LSTM_Dense()
         else:
             raise ValueError('Unknown model name')
@@ -186,22 +172,32 @@ class ModelManager:
         #
         return model
     #
-    # def fit(self):
-    #     #
-    #     model = self.create_compile_model()
-    #     #
-    #     callback = keras.callbacks.EarlyStopping(monitor='val_accuracy',
-    #                                              patience=self.__model_dict['fit_earlystopping_patience'],
-    #                                              restore_best_weights=True)
-    #     history = model.fit(np_X_train, df_y_Nd_train,
-    #                         self.__model_dict['fit_batch_size'],
-    #                         shuffle=False,
-    #                         epochs=self.__model_dict['model_fit_epochs_max'],
-    #                         callbacks=[callback], verbose=1,
-    #                         validation_data=(np_X_val, df_y_Nd_val))
-    #     #
-    #     train_loss = round(min(history.history['loss']), 3)
-    #     val_loss = round(min(history.history['val_loss']), 3)
-    #     train_accuracy = round(max(history.history['accuracy']), 2)
-    #     val_accuracy = round(max(history.history['val_accuracy']), 2)
-    #
+    def fit(self, learning_data):
+        #
+        import keras
+        #
+        model = self.create_compile_model()
+        #
+        callback = keras.callbacks.EarlyStopping(monitor='val_accuracy',
+                                                 patience=self.__model_dict['fit_earlystopping_patience'],
+                                                 restore_best_weights=True)
+        history = model.fit(learning_data['train']['np_X'],
+                            learning_data['train']['df_y_Nd'],
+                            self.__model_dict['fit_batch_size'],
+                            shuffle=False,
+                            epochs=self.__model_dict['fit_epochs_max'],
+                            callbacks=[callback],
+                            verbose=1,
+                            validation_data=(learning_data['val']['np_X'],
+                                             learning_data['val']['df_y_Nd']))
+        #
+        train_loss = round(min(history.history['loss']), 3)
+        val_loss = round(min(history.history['val_loss']), 3)
+        train_accuracy = round(max(history.history['accuracy']), 2)
+        val_accuracy = round(max(history.history['val_accuracy']), 2)
+        print("train_loss     = ", train_loss)
+        print("val_loss       = ", val_loss)
+        print("train_accuracy = ", train_accuracy)
+        print("val_accuracy   = ", val_accuracy)
+        print("---")
+
